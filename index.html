@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PAC · Cieneguita</title>
+<style>
+:root{
+  --navy:#1F3864; --navy2:#2F5597; --ocre:#9C6500; --teal:#0E7490; --nar:#C65911;
+  --rojo:#C0392B; --verde:#2E8B57; --ambar:#D97706;
+  --ink:#1F2937; --ink2:#4B5563; --muted:#6B7280; --line:#E5E7EB; --line2:#D1D5DB;
+  --bg:#F3F5F9; --card:#FFFFFF; --soft:#F8FAFC; --ama:#FFF2A8; --amaB:#E0B400;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.35 "Segoe UI",Calibri,system-ui,-apple-system,sans-serif}
+button,input,select{font:inherit}
+.top{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+.top .row1{display:flex;align-items:center;gap:16px;padding:10px 18px 6px;flex-wrap:wrap}
+.brand{font-weight:700;font-size:18px;letter-spacing:.2px}
+.brand small{display:block;font-weight:400;font-size:11px;opacity:.75}
+.sels{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-left:auto}
+.sel{display:flex;flex-direction:column;gap:2px}
+.sel label{font-size:10px;text-transform:uppercase;letter-spacing:.6px;opacity:.75}
+.sel select{background:var(--ama);color:#111;border:2px solid var(--amaB);border-radius:6px;padding:4px 8px;font-weight:700;min-width:110px;cursor:pointer}
+.sel select:disabled{opacity:.45;cursor:not-allowed}
+.status{padding:4px 18px 8px;font-size:12px;font-weight:600}
+.status .ok{color:#86EFAC}.status .pre{color:#FCD34D}.status .bad{color:#FCA5A5}
+.tabs{display:flex;gap:2px;padding:0 12px;background:#172B4D;overflow-x:auto}
+.tabs button{background:none;border:0;color:#CBD5E1;padding:9px 14px;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;font-weight:600}
+.tabs button.on{color:#fff;border-bottom-color:#FBBF24}
+.tabs button:hover{color:#fff}
+main{padding:16px 18px 40px;max-width:1600px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card h3{margin:0 0 10px;font-size:13px;color:var(--navy);text-transform:uppercase;letter-spacing:.5px}
+.banner{border-radius:8px;padding:8px 12px;font-weight:600;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.banner.mes{background:var(--navy);color:#fff}.banner.obj{background:var(--ocre);color:#fff}.banner.fijo{background:var(--teal);color:#fff}
+.banner .tag{background:rgba(255,255,255,.18);border-radius:999px;padding:2px 10px;font-size:11px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.tile{background:#fff;border:1px solid var(--line);border-top:4px solid var(--navy);border-radius:8px;padding:10px 12px}
+.tile .t{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.tile .v{font-size:22px;font-weight:700;margin:4px 0 2px}
+.tile .s{font-size:11px;color:var(--muted)}
+.tile.main{background:#FDF2F2;border-top-color:var(--rojo)}
+.tile.main .v{font-size:28px}
+.pos{color:var(--verde)}.neg{color:var(--rojo)}.zero{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:1100px){.grid2{grid-template-columns:1fr}}
+table{border-collapse:collapse;width:100%}
+.tbl th{background:var(--navy);color:#fff;font-weight:600;padding:7px 8px;font-size:12px;text-align:center;white-space:nowrap}
+.tbl th.ob{background:var(--ocre)}.tbl th.gr{background:#808080}
+.tbl td{padding:5px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td.n{text-align:right;font-variant-numeric:tabular-nums}
+.tbl td.c{text-align:center}
+.tbl td.muted{color:#9CA3AF;font-size:11px}
+.tbl td.objc{background:#FFF8E1;color:#9C5700}
+.tbl tr.area td{color:#fff;font-weight:700;letter-spacing:.3px}
+.tbl tr.sub td{background:#F3F4F6;font-weight:700}
+.tbl tr.tot td{background:var(--navy);color:#fff;font-weight:700}
+.tbl tr.row:hover td{background:#F8FAFF}
+.tbl tr.row{cursor:pointer}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#C8C8C8}
+.dot.r{background:var(--rojo)}.dot.a{background:var(--ambar)}.dot.g{background:var(--verde)}
+.var-up{color:var(--rojo);font-weight:700}.var-dn{color:var(--verde);font-weight:700}
+.legend{font-size:11px;color:var(--muted);margin:6px 0 10px}
+.pareto .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.pareto .seg{display:flex;gap:0;border:1px solid var(--line2);border-radius:6px;overflow:hidden}
+.pareto .seg button{border:0;background:#fff;padding:4px 10px;cursor:pointer;font-weight:600;color:var(--ink2)}
+.pareto .seg button.on{background:var(--ama);color:#111}
+.pr{display:grid;grid-template-columns:minmax(120px,190px) 1fr 76px;align-items:center;gap:8px;padding:3px 0;font-size:12px}
+.pr .nm{text-align:right;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pr .bar{position:relative;height:14px}
+.pr .bar i{position:absolute;top:0;height:14px;border-radius:0 4px 4px 0}
+.pr .bar i.n{background:var(--rojo)}.pr .bar i.p{background:var(--verde)}
+.pr .vl{text-align:right;font-variant-numeric:tabular-nums}
+.pr.ah{grid-template-columns:1fr auto;border-bottom:2px solid;margin-top:8px;font-weight:700;padding-bottom:2px}
+.lect{margin-top:10px;font-size:12px;color:var(--ink2);background:var(--soft);border-radius:8px;padding:8px 10px}
+.check{font-size:11px;margin-left:8px}
+.scroll{overflow-x:auto}
+.mx th,.mx td{padding:3px 5px;font-size:11px}
+.mx td.sticky,.mx th.sticky{position:sticky;left:0;background:#fff;z-index:1;text-align:left;min-width:200px}
+.mx th.sticky{background:var(--navy)}
+.mx tr.ton td{background:#E8F4EA}
+.mx tr.sumr td{background:#D9E1F2;font-weight:700}
+.mx tr.sumr td.sticky{background:#D9E1F2}
+.mx tr.ton td.sticky{background:#E8F4EA}
+.mx td.off{color:#CBD5E1}
+.mx .ar{display:inline-block;padding:1px 6px;border-radius:4px;color:#fff;font-size:10px;margin-left:6px}
+.btn{background:var(--navy);color:#fff;border:0;border-radius:7px;padding:8px 14px;font-weight:600;cursor:pointer}
+.btn.or{background:var(--nar)}.btn.gr{background:#6B7280}.btn.sm{padding:4px 9px;font-size:12px}.btn.rd{background:var(--rojo)}
+.btn:hover{filter:brightness(1.1)}
+.bar-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.drop{border:2px dashed var(--line2);border-radius:10px;padding:18px;text-align:center;color:var(--muted);background:#fff;margin-bottom:12px}
+.drop.hot{border-color:var(--navy2);background:#EEF4FF}
+.log{font-family:Consolas,monospace;font-size:12px;background:#0F172A;color:#E2E8F0;border-radius:8px;padding:10px;max-height:180px;overflow:auto;white-space:pre-wrap;margin-top:10px;display:none}
+.inp{border:1px solid var(--line2);border-radius:5px;padding:3px 6px;width:100%;background:#FFFDF0}
+.inp.n{text-align:right}
+.inp.s{width:58px}
+td .inp{min-width:44px}
+.est-ok{color:var(--verde);font-weight:700}.est-pre{color:var(--nar);font-weight:700}.est-bad{color:var(--rojo);font-weight:700}
+.hint{font-size:11px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;color:#fff;font-weight:600;font-size:12px}
+.chip button{background:rgba(255,255,255,.25);border:0;color:#fff;border-radius:50%;width:18px;height:18px;cursor:pointer;line-height:1}
+.toast{position:fixed;right:18px;bottom:18px;background:#111827;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);opacity:0;transition:.25s;pointer-events:none;max-width:420px;z-index:50}
+.toast.on{opacity:1}
+.chart svg{width:100%;height:auto;display:block}
+.tip{position:fixed;pointer-events:none;background:#111827;color:#fff;font-size:12px;padding:6px 9px;border-radius:6px;z-index:60;display:none;white-space:nowrap}
+.det{margin-top:14px}
+.flex{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+.help p,.help li{font-size:13px;line-height:1.5}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;background:#EEF2FF;color:var(--navy);font-weight:600;font-size:11px}
+@media print{.top .sels,.tabs,.bar-tools{display:none}.top{position:static}}
+.fs{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:5px 10px;font-weight:700;font-size:12px;white-space:nowrap}
+.fs.on{background:#DCFCE7;color:#14532D;border:2px solid #22C55E}
+.fs.on button{background:none;border:0;color:#14532D;cursor:pointer;font-weight:700}
+.fs.off{background:rgba(255,255,255,.15);color:#E5E7EB}
+.btnfs{background:#FBBF24;color:#111;border:2px solid #D97706;cursor:pointer}
+#fsbox{display:flex;gap:6px;align-items:center}
+.fs.pend{background:#FEF3C7;color:#92400E;border:2px solid #F59E0B}
+.fs.lnk{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.4);cursor:pointer}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:100}
+.mbox{background:#fff;border-radius:12px;padding:18px 20px;width:min(380px,92vw);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.mbox h3{margin:0 0 4px;color:var(--navy)}
+
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="row1">
+    <div class="brand">PROYECTOS DE AHORRO PARA LA COMPETITIVIDAD (PAC)<small>Minera Río Tinto · Unidad Cieneguita</small></div>
+    <div class="sels">
+      <div class="sel"><label>Mes</label><select id="selMes"></select></div>
+      <div class="sel"><label>Comparar vs</label><select id="selVs"><option>Mes</option><option>Objetivo</option></select></div>
+      <div class="sel"><label>Cuál mes</label><select id="selBase"></select></div>
+      <div class="sel"><label>Archivo</label><div id="fsbox"></div></div>
+    </div>
+  </div>
+  <div class="status" id="status"></div>
+  <nav class="tabs">
+    <button data-tab="pac">PAC</button>
+    <button data-tab="diario">PAC DIARIO</button>
+    <button data-tab="anual">ANUAL</button>
+    <button data-tab="importar">IMPORTAR</button>
+    <button data-tab="catalogo">CATÁLOGO</button>
+    <button data-tab="bd">BASE DE DATOS</button>
+    <button data-tab="ayuda">CÓMO SE USA</button>
+  </nav>
+</div>
+<main>
+  <section class="view" id="v-pac"></section>
+  <section class="view" id="v-diario"></section>
+  <section class="view" id="v-anual"></section>
+  <section class="view" id="v-importar"></section>
+  <section class="view" id="v-catalogo"></section>
+  <section class="view" id="v-bd"></section>
+  <section class="view help" id="v-ayuda">
+    <div class="card">
+      <h3>Cómo se usa</h3>
+      <p><b>1. Importar.</b> Pestaña <span class="pill">IMPORTAR</span> → arrastra o selecciona el <b>Balance Metalúrgico</b> y el <b>Costos_Diario_MRT</b> del mes (pueden ser varios archivos y varios meses a la vez). El PAC detecta solo qué archivo es y de qué mes, y reescribe ese mes en su lugar. Los archivos originales no se modifican.</p>
+      <p><b>2. Consultar.</b> Arriba eliges <b>Mes</b>, <b>Comparar vs</b> (Mes u Objetivo) y <b>Cuál mes</b> (Mes anterior o cualquier mes importado). Todo se recalcula al instante: PAC, PAC DIARIO y ANUAL.</p>
+      <ul>
+        <li><b>Oficial</b> = Mes vs Mes anterior. Mes fijo y Objetivo son <i>consulta</i>.</li>
+        <li><b>Corte</b>: reactivos y costos se muestran hasta el mismo día (el menor entre balance y costos). Si costos va atrás, el mes sale como <i>PRELIMINAR</i>.</li>
+        <li><b>Mes anterior</b>: automático, ponderado del mes previo importado (Σ consumo ÷ Σ ton).</li>
+        <li><b>Aportación</b> = (base × ton del día − consumo del día) × precio. Positivo = ahorro.</li>
+      </ul>
+      <p><b>3. Configurar.</b> Pestaña <span class="pill">CATÁLOGO</span>: agrega, quita (Activo = No) o reordena conceptos y áreas; captura el Precio de reactivos y el Objetivo del mes (vale de ese mes en adelante hasta que captures otro).</p>
+      <p><b>4. Revisar datos.</b> Pestaña <span class="pill">BASE DE DATOS</span>: lo importado día por día. Para traer un dato nuevo del Balance (otra columna) o de Costos (otra fila), agrégalo ahí y reimporta.</p>
+      <p><b>5. Guardar y compartir.</b> Este PAC vive en un link de GitHub. Lo que importas o cambias queda primero en tu navegador (arriba sale <b>● Sin guardar</b>). El responsable da <b>💾 Guardar</b> con su llave de GitHub y los datos se guardan en el repositorio; todos los que abran el link ven lo último en 2–5 minutos (F5). Sin la llave nadie puede guardar; los demás solo consultan. <b>↺</b> descarta los cambios de tu navegador. <b>Exportar a Excel</b> saca PAC, diario, anual y BD en un .xlsx.</p>
+    </div>
+  </section>
+</main>
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
+<script src="xlsx.full.min.js"></script>
+<script>window.PAC_GH = { owner: 'csalido-glitch', repo: 'pac-cieneguita', branch: 'main', path: 'pac-datos.json' };</script>
+<script>
+var SEED = null;
+/* ============================================================
+   PAC · Proyectos de Ahorro para la Competitividad
+   Minera Río Tinto · Unidad Cieneguita
+   App autónoma: importa Balance y Costos (Excel), guarda la BD en el
+   navegador (y en respaldo JSON) y calcula todo con la misma lógica del Excel.
+   ============================================================ */
+'use strict';
+const FNAME = (() => { try { return decodeURIComponent(location.pathname.split('/').pop() || 'PAC.html'); } catch (e) { return 'PAC.html'; } })();
+const GH = (typeof window !== 'undefined' && window.PAC_GH) || null;   // modo GitHub (link)
+const STORE = 'PAC_CIENEGUITA_v1|' + (GH ? 'gh|' + GH.repo : FNAME);   // cada archivo (PAC-2026, PAC-2027…) guarda aparte en el navegador
+const MES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MESL = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+const ACOL = ['#1F3864','#7B3F00','#5B6B2F','#6B4E8B','#0E7490','#7F7F7F','#8B3A3A','#3F6E5A'];
+let S = null;
+
+/* ---------------- utilidades ---------------- */
+const $ = s => document.querySelector(s);
+const isN = v => typeof v === 'number' && isFinite(v);
+const ym = (y, m) => y + '-' + String(m).padStart(2, '0');
+const kY = k => +k.slice(0, 4), kM = k => +k.slice(5, 7);
+const prevK = k => { let y = kY(k), m = kM(k) - 1; if (m < 1) { m = 12; y--; } return ym(y, m); };
+const dimK = k => new Date(kY(k), kM(k), 0).getDate();
+const lab = k => k ? MES[kM(k) - 1] + '-' + String(kY(k)).slice(2) : '';
+const fmt0 = new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 });
+const fmt2 = new Intl.NumberFormat('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt3 = new Intl.NumberFormat('es-MX', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const money = v => !isN(v) ? '–' : (v < 0 ? '($' + fmt0.format(-v) + ')' : '$' + fmt0.format(v));
+const moneyM = v => !isN(v) ? '–' : (v >= 0 ? '+$' : '−$') + fmt2.format(Math.abs(v) / 1e6) + ' M';
+const kk = v => !isN(v) ? '' : (v >= 0 ? '+' : '−') + fmt0.format(Math.abs(v) / 1000) + ' k';
+const cls = v => !isN(v) || Math.abs(v) < 0.5 ? 'zero' : (v > 0 ? 'pos' : 'neg');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fdate = iso => { if (!iso) return ''; const d = new Date(iso); return d.getDate() + '-' + MES[d.getMonth()] + '-' + String(d.getFullYear()).slice(2) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+function toast(t, ms = 3200) { const e = $('#toast'); e.textContent = t; e.classList.add('on'); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove('on'), ms); }
+function areaColor(a) { const i = S.areas.indexOf(a); return i < 0 ? '#9CA3AF' : ACOL[i % ACOL.length]; }
+
+/* ---------------- estado ---------------- */
+const ORIG = '<!doctype html>\n' + document.documentElement.outerHTML;   // copia del propio archivo (para guardarse en sí mismo)
+const SM = '/*' + 'SEED*/', EM = '/*/' + 'SEED*/';
+function load() {
+  let L = null, ui = null;
+  try { const t = localStorage.getItem(STORE); if (t) L = JSON.parse(t); } catch (e) { }
+  try { ui = JSON.parse(localStorage.getItem(STORE + '_ui') || 'null'); } catch (e) { }
+  const seed = JSON.parse(JSON.stringify(SEED));
+  S = (L && (L.savedAt || '') > (seed.savedAt || '')) ? L : seed;      // gana la versión más reciente
+  S.ui = Object.assign({ mes: null, vs: 'Mes', base: 'ant', vista: 'Por área', tab: 'pac', catMes: null, bdSrc: 'bal', bdMes: null }, S.ui || {}, ui || {});
+  S.meses = S.meses || {}; S.bal = S.bal || {}; S.cos = S.cos || {};
+  if (!S.ui.mes || !listaMeses().includes(S.ui.mes)) S.ui.mes = ultimoMes() || ym(S.year, new Date().getMonth() + 1);
+}
+let saveT = null;
+function save() {                       // cambio de DATOS: se guarda en este navegador; al archivo solo con el botón Guardar
+  S.savedAt = new Date().toISOString();
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { try { localStorage.setItem(STORE, JSON.stringify(S)); } catch (e) { toast('⚠ El navegador no dejó guardar. Descarga un respaldo (pestaña IMPORTAR).', 6000); } }, 150);
+  saveUI(); const fb = $('#fsbox'); if (fb) fb.innerHTML = fsBox();
+}
+function saveUI() { try { localStorage.setItem(STORE + '_ui', JSON.stringify(S.ui)); } catch (e) { } }
+
+/* ---- botón GUARDAR: escribe dentro del mismo PAC.html (Chrome / Edge) con contraseña ---- */
+const fsOK = 'showOpenFilePicker' in window;
+const PWH = '99e6d19f8ae509df8e799aa69111eee35eef2ca46c9908d1d5e1f6b0e3062139';
+let FH = null, LASTW = null, FILEAT = (SEED && SEED.savedAt) || '';
+const dirty = () => (S.savedAt || '') !== FILEAT;
+function idb() { return new Promise((res, rej) => { const r = indexedDB.open('PAC_FS', 1); r.onupgradeneeded = () => r.result.createObjectStore('h'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function idbGet(k) { try { const db = await idb(); return await new Promise(res => { const q = db.transaction('h').objectStore('h').get(k); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }); } catch (e) { return null; } }
+async function idbSet(k, v) { try { const db = await idb(); await new Promise(res => { const tx = db.transaction('h', 'readwrite'); tx.objectStore('h').put(v, k); tx.oncomplete = () => res(); tx.onerror = () => res(); }); } catch (e) { } }
+function extraerSeed(txt) { const a = txt.indexOf(SM), b = txt.indexOf(EM, a); if (a < 0 || b < 0) return null; try { return JSON.parse(txt.slice(a + SM.length, b)); } catch (e) { return null; } }
+async function sha(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function pedirClave() {
+  return new Promise(res => {
+    const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = `<div class="mbox"><h3>Guardar en el archivo</h3><p class="hint">Los cambios se escriben dentro del PAC.html para que todos los vean.</p>
+      <input type="password" class="inp" id="pw" placeholder="Contraseña" autocomplete="off" style="font-size:15px;padding:8px">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn gr" id="pwNo">Cancelar</button><button class="btn" id="pwOk">💾 Guardar</button></div></div>`;
+    document.body.appendChild(m); const i = m.querySelector('#pw'); i.focus();
+    const fin = v => { m.remove(); res(v); };
+    m.querySelector('#pwOk').onclick = () => fin(i.value); m.querySelector('#pwNo').onclick = () => fin(null);
+    i.onkeydown = e => { if (e.key === 'Enter') fin(i.value); if (e.key === 'Escape') fin(null); };
+  });
+}
+async function guardarArchivo() {
+  if (!fsOK) { toast('Para guardar en el archivo usa Chrome o Edge.', 5000); return; }
+  const c = await pedirClave(); if (c === null) return;
+  if (await sha(c) !== PWH) { toast('✕ Contraseña incorrecta', 4000); return; }
+  try {
+    if (!FH) FH = await idbGet('fh|' + FNAME);
+    if (FH && FH.name !== FNAME) FH = null;
+    if (FH) { try { if ((await FH.queryPermission({ mode: 'readwrite' })) !== 'granted' && (await FH.requestPermission({ mode: 'readwrite' })) !== 'granted') FH = null; } catch (e) { FH = null; } }
+    if (!FH) {
+      toast('Elige el PAC.html que quieres actualizar (el de la carpeta compartida)', 5000);
+      const [h] = await showOpenFilePicker({ types: [{ description: 'PAC', accept: { 'text/html': ['.html', '.htm'] } }] });
+      const t = await (await h.getFile()).text();
+      if (!t.includes(SM)) { toast('Ese archivo no es el PAC.html', 5000); return; }
+      if ((await h.requestPermission({ mode: 'readwrite' })) !== 'granted') { toast('Sin permiso para escribir en el archivo (¿PC o carpeta de solo lectura?)', 6000); return; }
+      if (h.name !== FNAME && !confirm('Elegiste ' + h.name + ' pero tienes abierto ' + FNAME + '. ¿Guardar en ' + h.name + ' de todos modos?')) return;
+      FH = h; await idbSet('fh|' + FNAME, h);
+    }
+    const fs = extraerSeed(await (await FH.getFile()).text()), fat = (fs && fs.savedAt) || '';
+    if (fat && fat !== FILEAT && fat > FILEAT && fat !== (S.savedAt || '')) {
+      if (!confirm('El archivo tiene una versión más reciente (' + fdate(fat) + ') guardada desde otra PC. Si continúas se reemplaza con la tuya. ¿Guardar de todos modos?')) return;
+    }
+    if (!S.savedAt) S.savedAt = new Date().toISOString();
+    const a = ORIG.indexOf(SM), b = ORIG.indexOf(EM, a);
+    const html = ORIG.slice(0, a + SM.length) + JSON.stringify(S).replace(/<\//g, '<\\/') + ORIG.slice(b);
+    const w = await FH.createWritable(); await w.write(new Blob([html], { type: 'text/html' })); await w.close();
+    FILEAT = S.savedAt; LASTW = new Date(); renderTop(); toast('✔ Guardado en ' + FH.name + '. Los demás lo ven al abrirlo (F5).', 5000);
+  } catch (e) { if (e.name !== 'AbortError') toast('No se pudo guardar: ' + e.message + ' (¿solo lectura?)', 7000); }
+}
+function descartarLocal() {
+  if (!confirm('¿Descartar los cambios de este navegador y volver a lo que tiene el archivo?')) return;
+  try { localStorage.removeItem(STORE); } catch (e) { }
+  const ui = S.ui; S = JSON.parse(JSON.stringify(SEED)); S.ui = ui; MEMO = {}; render(); toast('Se regresó a la versión del archivo');
+}
+async function initFS() { }
+function fsBox() {
+  if (GH) return fsBoxGH();
+  const hh = LASTW ? ' · ' + String(LASTW.getHours()).padStart(2, '0') + ':' + String(LASTW.getMinutes()).padStart(2, '0') : '';
+  if (!dirty()) return `<span class="fs on" title="Lo que ves es lo que tiene el archivo">✔ Archivo al día${hh}</span>`;
+  return `<span class="fs pend" title="Importaste o cambiaste algo que todavía no está en el archivo">● Sin guardar</span><button class="fs btnfs" onclick="guardarArchivo()">💾 Guardar</button><button class="fs lnk" onclick="descartarLocal()" title="Descartar cambios de este navegador">↺</button>`;
+}
+
+/* ---- MODO GITHUB: los datos viven en pac-datos.json del repositorio ---- */
+const TOKK = () => 'PAC_GH_TOKEN|' + (GH ? GH.owner + '/' + GH.repo : '');
+function ghToken() { try { return localStorage.getItem(TOKK()) || ''; } catch (e) { return ''; } }
+function olvidarToken() { try { localStorage.removeItem(TOKK()); } catch (e) { } toast('Llave borrada de este navegador'); render(); }
+const ghApi = () => `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+async function cargarGH() {
+  const tok = ghToken(), tries = [];
+  if (tok) tries.push(() => fetch(ghApi() + '?ref=' + GH.branch, { headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github.raw' }, cache: 'no-store' }));
+  tries.push(() => fetch(`https://raw.githubusercontent.com/${GH.owner}/${GH.repo}/${GH.branch}/${GH.path}?t=${Date.now()}`, { cache: 'no-store' }));
+  tries.push(() => fetch(GH.path + '?t=' + Date.now(), { cache: 'no-store' }));
+  for (const t of tries) { try { const r = await t(); if (r.ok) { const j = await r.json(); if (j && j.cat) return j; } } catch (e) { } }
+  toast('⚠ No se pudieron leer los datos del PAC (revisa tu internet).', 8000);
+  return { v: 1, year: new Date().getFullYear(), areas: [], fletes: { tot: 'DM', exc: 'AU' }, balCodes: [], cosCodes: [], cat: [], meses: {}, bal: {}, cos: {} };
+}
+function b64utf8(str) { const b = new TextEncoder().encode(str); let bin = ''; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(bin); }
+function pedirToken() {
+  return new Promise(res => {
+    const m = document.createElement('div'); m.className = 'modal';
+    m.innerHTML = `<div class="mbox" style="width:min(460px,94vw)"><h3>Llave de GitHub para guardar</h3>
+      <p class="hint">Solo la primera vez en este navegador. Pega el token que creaste en GitHub (empieza con <b>github_pat_</b>). Se queda guardado solo en este navegador; no viaja a ningún otro lado más que a GitHub.</p>
+      <input type="password" class="inp" id="tk" placeholder="github_pat_…" autocomplete="off" style="font-size:14px;padding:8px">
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn gr" id="tkNo">Cancelar</button><button class="btn" id="tkOk">Usar llave</button></div></div>`;
+    document.body.appendChild(m); const i = m.querySelector('#tk'); i.focus();
+    const fin = v => { m.remove(); res(v); };
+    m.querySelector('#tkOk').onclick = () => fin(i.value.trim()); m.querySelector('#tkNo').onclick = () => fin(null);
+    i.onkeydown = e => { if (e.key === 'Enter') fin(i.value.trim()); if (e.key === 'Escape') fin(null); };
+  });
+}
+let GHBUSY = false;
+async function guardarGH() {
+  if (GHBUSY) return;
+  let tok = ghToken();
+  if (!tok) { tok = await pedirToken(); if (!tok) return; }
+  GHBUSY = true; toast('Guardando en GitHub…', 20000);
+  try {
+    const H = { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json' };
+    let sha = null, remAt = '';
+    const r1 = await fetch(ghApi() + '?ref=' + GH.branch, { headers: H, cache: 'no-store' });
+    if (r1.status === 401 || r1.status === 403) { try { localStorage.removeItem(TOKK()); } catch (e) { } throw new Error('La llave no es válida o no tiene permiso de escritura en ' + GH.repo + '. Vuelve a dar Guardar y pega una llave correcta.'); }
+    if (r1.ok) { sha = (await r1.json()).sha;
+      const r2 = await fetch(ghApi() + '?ref=' + GH.branch, { headers: { Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github.raw' }, cache: 'no-store' });
+      if (r2.ok) { try { remAt = (await r2.json()).savedAt || ''; } catch (e) { } } }
+    else if (r1.status !== 404) throw new Error('GitHub respondió ' + r1.status);
+    if (remAt && remAt !== FILEAT && remAt > FILEAT && remAt !== (S.savedAt || '')) {
+      if (!confirm('En GitHub hay una versión más reciente (' + fdate(remAt) + ') guardada desde otra PC. Si continúas se reemplaza con la tuya. ¿Guardar de todos modos?')) { GHBUSY = false; toast('No se guardó'); return; }
+    }
+    if (!S.savedAt) S.savedAt = new Date().toISOString();
+    const data = Object.assign({}, S); delete data.ui;
+    const body = { message: 'PAC: actualización ' + fdate(new Date().toISOString()), content: b64utf8(JSON.stringify(data)), branch: GH.branch };
+    if (sha) body.sha = sha;
+    const r3 = await fetch(ghApi(), { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, H), body: JSON.stringify(body) });
+    if (r3.status === 409 || r3.status === 422) throw new Error('Alguien guardó al mismo tiempo. Recarga (F5) e intenta de nuevo.');
+    if (!r3.ok) throw new Error('GitHub respondió ' + r3.status + (r3.status === 401 || r3.status === 403 ? ' (la llave no tiene permiso de escritura)' : ''));
+    try { localStorage.setItem(TOKK(), tok); } catch (e) { }
+    FILEAT = S.savedAt; LASTW = new Date(); renderTop(); toast('✔ Guardado en GitHub. Los demás lo ven en el link en 2–5 minutos.', 6000);
+  } catch (e) { toast('✕ No se guardó: ' + e.message, 9000); }
+  GHBUSY = false;
+}
+function fsBoxGH() {
+  const hh = LASTW ? ' · ' + String(LASTW.getHours()).padStart(2, '0') + ':' + String(LASTW.getMinutes()).padStart(2, '0') : '';
+  const datos = FILEAT ? fdate(FILEAT) : '';
+  if (!dirty()) return `<span class="fs on" title="Datos guardados en GitHub: ${esc(datos)}">✔ Al día${hh || (datos ? ' · ' + esc(datos) : '')}</span>`;
+  return `<span class="fs pend" title="Importaste o cambiaste algo que todavía no está en GitHub">● Sin guardar</span><button class="fs btnfs" onclick="guardarGH()">💾 Guardar</button><button class="fs lnk" onclick="descartarLocal()" title="Descartar cambios de este navegador">↺</button>`;
+}
+function ultimoMes() { const ks = Object.keys(S.meses).filter(k => S.meses[k].ult > 0 || S.meses[k].cos > 0).sort(); return ks[ks.length - 1]; }
+function listaMeses() {
+  const ys = new Set([S.year]); Object.keys(S.meses).forEach(k => ys.add(kY(k)));
+  const out = []; [...ys].sort().forEach(y => { for (let m = 1; m <= 12; m++) out.push(ym(y, m)); }); return out;
+}
+
+/* ---------------- cálculo (misma lógica del Excel) ---------------- */
+let MEMO = {};
+function corte(k) {
+  const M = S.meses[k]; if (!M) return 0; const d = dimK(k);
+  if (M.man !== null && M.man !== undefined && M.man !== '') return Math.max(0, Math.min(+M.man, d));
+  return (M.ult > 0 && M.cos > 0) ? Math.min(M.ult, M.cos, d) : 0;
+}
+function estado(k) {
+  const M = S.meses[k]; if (!M || (!(M.ult > 0) && !(M.cos > 0))) return { t: 'Mes sin importar', c: 'bad', oficial: false };
+  if (!(M.ult > 0)) return { t: '⚠ Falta importar BALANCE', c: 'bad' };
+  if (!(M.cos > 0)) return { t: '⚠ Falta importar COSTOS', c: 'bad' };
+  const ct = corte(k);
+  if (ct >= dimK(k)) return { t: '✔ Mes completo', c: 'ok' };
+  if (M.cos < M.ult) return { t: '⏳ PRELIMINAR · costos al día ' + M.cos + ', balance al ' + M.ult, c: 'pre' };
+  return { t: '✔ OFICIAL al día ' + ct, c: 'ok' };
+}
+function cons(c, k, d) {
+  const src = c.ori === 'Balance' ? S.bal : S.cos; const r = src[k] && src[k][d]; if (!r) return 0;
+  let s = 0; for (const ref of c.refs) { const v = r[String(ref).trim().toUpperCase()] ?? r[String(ref).trim()]; if (isN(v)) s += v; } return s;
+}
+function ton(c, k, d) { const r = S.bal[k] && S.bal[k][d]; if (!r) return 0; const v = r[c.prem === 'Acarreadas' ? 'TON_ACA' : 'TON_MOL']; return isN(v) ? v : 0; }
+function sums(c, k) {
+  const key = 's|' + S.cat.indexOf(c) + '|' + k; if (key in MEMO) return MEMO[key];
+  const ct = corte(k); let r = null;
+  if (ct > 0 && c.refs.length) { let sc = 0, st = 0; for (let d = 1; d <= ct; d++) { sc += cons(c, k, d); st += ton(c, k, d); } r = { sc, st, a: st > 0 ? sc / st : null }; }
+  return (MEMO[key] = r);
+}
+const A = (c, k) => { const s = sums(c, k); return s ? s.a : null; };
+function lastVal(map, k) { let bk = '', v = null; for (const x in (map || {})) { if (x <= k && x > bk && isN(map[x])) { bk = x; v = map[x]; } } return v; }
+const P = (c, k) => c.tipo === 'Reactivo' ? lastVal(c.precio, k) : 1;
+const OB = (c, k) => lastVal(c.obj, k);
+function O(c, k) { const a = A(c, prevK(k)); return isN(a) ? a : (isN(c.oini) ? c.oini : null); }
+function baseVal(c, k, modo) {
+  modo = modo || S.ui;
+  if (modo.vs === 'Objetivo') return OB(c, k);
+  if (modo.base === 'ant') return O(c, k);
+  return A(c, modo.base);
+}
+function aport(c, k, modo) {
+  const s = sums(c, k), b = baseVal(c, k, modo), p = P(c, k);
+  if (!s || !isN(b) || !isN(p)) return null; return (b * s.st - s.sc) * p;
+}
+const activos = () => S.cat.filter(c => c.act && c.con);
+const modoTxt = () => S.ui.vs === 'Objetivo' ? 'OBJETIVO' : (S.ui.base === 'ant' ? lab(prevK(S.ui.mes)) : lab(S.ui.base));
+const esOficial = () => S.ui.vs === 'Mes' && S.ui.base === 'ant';
+function areaOrder(a) { const i = S.areas.indexOf(a); return i < 0 ? 99 : i; }
+
+/* ---------------- encabezado y selectores ---------------- */
+function renderTop() {
+  const ms = listaMeses();
+  $('#selMes').innerHTML = ms.map(k => `<option value="${k}" ${k === S.ui.mes ? 'selected' : ''}>${lab(k)}${corte(k) ? '' : ' ·'}</option>`).join('');
+  $('#selVs').value = S.ui.vs;
+  $('#selBase').innerHTML = `<option value="ant">Mes anterior</option>` + ms.map(k => `<option value="${k}" ${k === S.ui.base ? 'selected' : ''}>${lab(k)}${corte(k) ? '' : ' ·'}</option>`).join('');
+  $('#selBase').value = S.ui.base; $('#selBase').disabled = S.ui.vs === 'Objetivo';
+  const e = estado(S.ui.mes); let t = `<span class="${e.c}">${esc(lab(S.ui.mes))}: ${esc(e.t)}</span>`;
+  if (S.ui.vs === 'Mes' && S.ui.base !== 'ant') t += corte(S.ui.base) ? `  ·  base ${lab(S.ui.base)}: corte día ${corte(S.ui.base)}` : `  ·  <span class="bad">⚠ base ${lab(S.ui.base)} sin datos importados</span>`;
+  $('#status').innerHTML = t;
+  const fb = $('#fsbox'); if (fb) fb.innerHTML = fsBox();
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.ui.tab));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + S.ui.tab));
+}
+function render() {
+  MEMO = {}; renderTop();
+  const f = { pac: rPAC, diario: rDiario, anual: rAnual, importar: rImportar, catalogo: rCatalogo, bd: rBD, ayuda: () => { } }[S.ui.tab];
+  f && f();
+}
+
+/* ---------------- PAC (resumen) ---------------- */
+function filasPAC(k) {
+  const rows = activos().map(c => ({ c, ap: aport(c, k), b: baseVal(c, k, { vs: 'Mes', base: S.ui.base }), ob: OB(c, k), a: A(c, k) })).filter(r => isN(r.ap));
+  rows.sort((x, y) => areaOrder(x.c.area) - areaOrder(y.c.area) || x.ap - y.ap);
+  return rows;
+}
+function rPAC() {
+  const k = S.ui.mes, rows = filasPAC(k), tot = rows.reduce((s, r) => s + r.ap, 0), obj = S.ui.vs === 'Objetivo';
+  const ct = corte(k), tonM = (() => { let s = 0; for (let d = 1; d <= ct; d++) { const r = S.bal[k] && S.bal[k][d]; if (r && isN(r.TON_MOL)) s += r.TON_MOL; } return s; })();
+  const bcls = obj ? 'obj' : (esOficial() ? 'mes' : 'fijo');
+  let h = `<div class="banner ${bcls}">REAL ${lab(k)} vs ${modoTxt()} <span class="tag">${obj || !esOficial() ? 'consulta' : 'PAC oficial'}</span>
+           <span style="margin-left:auto" class="tag">corte día ${ct || '—'} · ${fmt0.format(tonM)} t molidas</span>
+           <button class="btn sm gr" onclick="exportExcel()">⤓ Exportar a Excel</button></div>`;
+  // tarjetas
+  const areas = [...S.areas, ...new Set(rows.map(r => r.c.area).filter(a => !S.areas.includes(a)))];
+  const pos = rows.filter(r => r.ap > 0);
+  h += `<div class="tiles"><div class="tile main"><div class="t">${obj ? 'Aportación vs objetivo' : esOficial() ? 'Aportación total PAC' : 'Aportación vs ' + modoTxt()}</div>
+        <div class="v ${cls(tot)}">${moneyM(tot)}</div><div class="s">${tonM ? fmt2.format(tot / tonM) + ' $/t molida' : ''}</div></div>`;
+  areas.forEach(a => { const v = rows.filter(r => r.c.area === a).reduce((s, r) => s + r.ap, 0); const n = rows.filter(r => r.c.area === a).length; if (!n && !S.areas.includes(a)) return;
+    h += `<div class="tile" style="border-top-color:${areaColor(a)}"><div class="t">${esc(a)}</div><div class="v ${cls(v)}">${n ? moneyM(v) : '–'}</div><div class="s">${n} concepto${n === 1 ? '' : 's'}</div></div>`; });
+  h += `<div class="tile" style="border-top-color:var(--verde)"><div class="t">${obj ? 'Cumplen objetivo' : 'Conceptos con ahorro'}</div><div class="v pos">${pos.length} de ${rows.length}</div><div class="s">+${money(pos.reduce((s, r) => s + r.ap, 0))}</div></div></div>`;
+  if (!rows.length) { $('#v-pac').innerHTML = h + `<div class="card">No hay datos para ${lab(k)} con esta comparación. Importa el Balance y los Costos en la pestaña <b>IMPORTAR</b>${S.ui.vs === 'Mes' && S.ui.base !== 'ant' ? ' (y revisa que el mes base tenga datos)' : ''}.</div>`; return; }
+  // tabla
+  const sumAbs = rows.reduce((s, r) => s + Math.abs(r.ap), 0);
+  const bl = S.ui.base === 'ant' ? lab(prevK(k)) : lab(S.ui.base);
+  let t = `<table class="tbl"><thead><tr><th>#</th><th></th><th style="text-align:left">Concepto</th><th>Tipo</th><th>Unidad</th><th class="${obj ? 'gr' : ''}">${bl}</th><th class="ob">Objetivo</th><th>${lab(k)}</th><th>Var. vs ${obj ? 'objetivo' : bl}</th><th>Aportación $</th><th>% total</th></tr></thead><tbody>`;
+  let n = 0;
+  areas.forEach(a => {
+    const rs = rows.filter(r => r.c.area === a); if (!rs.length) return;
+    t += `<tr class="area"><td colspan="11" style="background:${areaColor(a)}">${esc(a.toUpperCase())} · ${rs.length} concepto${rs.length === 1 ? '' : 's'}</td></tr>`;
+    rs.forEach(r => {
+      n++; const c = r.c, rea = c.tipo === 'Reactivo', f = v => !isN(v) ? '' : (rea ? fmt3 : fmt2).format(v);
+      const ref = obj ? r.ob : r.b, vr = isN(ref) && ref !== 0 && isN(r.a) ? (r.a - ref) / ref : null;
+      const dot = r.ap < -100000 ? 'r' : r.ap < 0 ? 'a' : r.ap > 0 ? 'g' : '';
+      t += `<tr class="row" onclick="verConcepto(${S.cat.indexOf(c)})"><td class="c muted">${n}</td><td class="c"><span class="dot ${dot}"></span></td><td><b>${esc(c.con)}</b></td><td class="c muted">${c.tipo}</td><td class="c muted">${unidad(c)}</td>
+        <td class="n" style="${obj ? 'color:#9CA3AF' : ''}">${f(r.b)}</td><td class="n objc">${f(r.ob)}</td><td class="n"><b>${f(r.a)}</b></td>
+        <td class="c ${isN(vr) && Math.abs(vr) >= 0.00005 ? (vr > 0 ? 'var-up' : 'var-dn') : ''}">${!isN(vr) ? '–' : Math.abs(vr) < 0.00005 ? '0.00%' : (vr > 0 ? '▲ ' : '▼ ') + fmt2.format(Math.abs(vr) * 100) + '%'}</td>
+        <td class="n ${cls(r.ap)}">${money(r.ap)}</td><td class="n muted">${sumAbs > 0 ? fmt2.format(Math.abs(r.ap) / sumAbs * 100) + '%' : '–'}</td></tr>`;
+    });
+    const sv = rs.reduce((s, r) => s + r.ap, 0);
+    t += `<tr class="sub"><td></td><td></td><td>Subtotal ${esc(a)}</td><td colspan="6"></td><td class="n ${cls(sv)}">${money(sv)}</td><td></td></tr>`;
+  });
+  const chk = totalDiario(k);
+  t += `<tr class="tot"><td></td><td></td><td>${obj ? 'TOTAL vs OBJETIVO' : esOficial() ? 'TOTAL PAC' : 'TOTAL vs ' + bl}</td><td colspan="6"></td><td class="n">${money(tot)}</td><td class="c">${Math.abs(chk - tot) < 1 ? (esOficial() ? '✔ cuadra' : 'consulta ✔') : 'revisar'}</td></tr></tbody></table>
+     <div class="legend">Semáforo: ● rojo = desviación &gt; $100 k · ● ámbar = desviación menor · ● verde = ahorro / cumple. &nbsp;Clic en un concepto para ver su detalle diario. &nbsp;El PAC oficial es vs mes anterior; mes fijo y objetivo son consulta.</div>`;
+  // pareto
+  let p = `<div class="pareto"><div class="hd"><h3 style="margin:0">Aportación por concepto (Pareto)</h3><div class="seg">${['Normal', 'Por área'].map(v => `<button class="${S.ui.vista === v ? 'on' : ''}" onclick="S.ui.vista='${v}'; saveUI();render()">${v}</button>`).join('')}</div></div>`;
+  const mx = Math.max(1, ...rows.map(r => Math.abs(r.ap)));
+  const bar = r => `<div class="pr" data-tip="${esc(r.c.con)}: ${money(r.ap)}"><div class="nm">${esc(r.c.con)}</div><div class="bar"><i class="${r.ap < 0 ? 'n' : 'p'}" style="left:0;width:${Math.abs(r.ap) < 0.5 ? 0 : Math.max(1.5, Math.abs(r.ap) / mx * 100)}%"></i></div><div class="vl ${cls(r.ap)}">${kk(r.ap)}</div></div>`;
+  if (S.ui.vista === 'Normal') [...rows].sort((x, y) => x.ap - y.ap).forEach(r => p += bar(r));
+  else areas.forEach(a => { const rs = rows.filter(r => r.c.area === a); if (!rs.length) return; const sv = rs.reduce((s, r) => s + r.ap, 0);
+    p += `<div class="pr ah" style="border-color:${areaColor(a)};color:${areaColor(a)}"><div>${esc(a.toUpperCase())}</div><div>${kk(sv)}</div></div>`; rs.forEach(r => p += bar(r)); });
+  const neg = [...rows].filter(r => r.ap < 0).sort((x, y) => x.ap - y.ap), sneg = neg.reduce((s, r) => s + r.ap, 0);
+  const peorA = areas.map(a => [a, rows.filter(r => r.c.area === a).reduce((s, r) => s + r.ap, 0)]).sort((x, y) => x[1] - y[1])[0];
+  p += `<div class="lect"><b>Lectura rápida:</b> ${neg.length >= 2 ? `${esc(neg[0].c.con)} y ${esc(neg[1].c.con)} concentran el ${fmt0.format((neg[0].ap + neg[1].ap) / sneg * 100)}% del sobreconsumo.` : neg.length ? `${esc(neg[0].c.con)} es el único con sobreconsumo.` : 'Sin conceptos con sobreconsumo.'}<br>Área con mayor desviación: <b>${peorA ? esc(peorA[0]) : '–'}</b></div></div>`;
+  $('#v-pac').innerHTML = h + `<div class="grid2"><div class="card scroll">${t}</div><div class="card">${p}</div></div><div id="detalle"></div>`;
+  bindTips($('#v-pac'));
+}
+function unidad(c) { return c.tipo === 'Reactivo' ? 'kg/t' : (c.prem === 'Acarreadas' ? '$/t acarr.' : '$/t'); }
+function totalDiario(k) { let s = 0; activos().forEach(c => { const b = baseVal(c, k), p = P(c, k); if (!isN(b) || !isN(p) || !sums(c, k)) return; const ct = corte(k); for (let d = 1; d <= ct; d++) s += (b * ton(c, k, d) - cons(c, k, d)) * p; }); return s; }
+function verConcepto(i) {
+  const c = S.cat[i], k = S.ui.mes, ct = corte(k), b = baseVal(c, k), p = P(c, k), d = dimK(k);
+  let acc = 0, pts = [];
+  for (let x = 1; x <= d; x++) { if (x > ct) { pts.push(null); continue; } acc += (b * ton(c, k, x) - cons(c, k, x)) * p; pts.push(acc); }
+  const ys = pts.filter(isN), mn = Math.min(0, ...ys), mxv = Math.max(0, ...ys), W = 900, H = 200, L = 60, R = 16, T = 14, B = 26;
+  const X = x => L + (x - 1) / (d - 1) * (W - L - R), Y = v => T + (mxv - v) / (mxv - mn || 1) * (H - T - B);
+  let path = ''; pts.forEach((v, j) => { if (isN(v)) path += (path ? 'L' : 'M') + X(j + 1).toFixed(1) + ',' + Y(v).toFixed(1); });
+  let dots = pts.map((v, j) => isN(v) ? `<circle cx="${X(j + 1)}" cy="${Y(v)}" r="4" fill="#fff" stroke="${v >= 0 ? '#2E8B57' : '#C0392B'}" stroke-width="2" data-tip="Día ${j + 1}: acumulado ${money(v)}"/>` : '').join('');
+  let ax = ''; for (let x = 1; x <= d; x += (d > 20 ? 2 : 1)) ax += `<text x="${X(x)}" y="${H - 8}" font-size="10" text-anchor="middle" fill="#6B7280">${x}</text>`;
+  $('#detalle').innerHTML = `<div class="card det"><h3>${esc(c.con)} · aportación acumulada por día (${lab(k)} vs ${modoTxt()})</h3>
+    <div class="hint">Base ${fmt3.format(b || 0)} ${unidad(c)} · real ${isN(A(c, k)) ? fmt3.format(A(c, k)) : '–'} · ${c.tipo === 'Reactivo' ? 'precio $' + fmt2.format(p || 0) + '/kg' : 'costo $'}</div>
+    <div class="chart"><svg viewBox="0 0 ${W} ${H}"><line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="#9CA3AF"/><text x="${L - 6}" y="${Y(0) + 4}" font-size="10" text-anchor="end" fill="#6B7280">0</text>
+    <text x="${L - 6}" y="${Y(mxv) + 4}" font-size="10" text-anchor="end" fill="#6B7280">${kk(mxv)}</text><text x="${L - 6}" y="${Y(mn) + 4}" font-size="10" text-anchor="end" fill="#6B7280">${kk(mn)}</text>
+    <path d="${path}" fill="none" stroke="#1F3864" stroke-width="2"/>${dots}${ax}</svg></div></div>`;
+  bindTips($('#detalle')); $('#detalle').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/* ---------------- PAC DIARIO ---------------- */
+function rDiario() {
+  const k = S.ui.mes, d = dimK(k), ct = corte(k), cs = activos().filter(c => sums(c, k));
+  const days = [...Array(d)].map((_, i) => i + 1);
+  const tr = (cells, cl = '') => `<tr class="${cl}">${cells}</tr>`;
+  let h = `<div class="banner ${S.ui.vs === 'Objetivo' ? 'obj' : esOficial() ? 'mes' : 'fijo'}">PAC DIARIO · ${lab(k)} vs ${modoTxt()}<span class="tag">corte día ${ct || '—'}</span><span class="tag">${esc(estado(k).t)}</span></div>`;
+  let head = `<tr><th class="sticky">Concepto</th><th>Unidad</th>${days.map(x => `<th>${x}</th>`).join('')}<th>Σ mes</th></tr>`;
+  let t1 = '', tonRow = (lbl, key) => { let s = 0; const cells = days.map(x => { const r = S.bal[k] && S.bal[k][x]; const v = r && isN(r[key]) ? r[key] : null; if (v) s += v; return `<td class="n">${v ? fmt0.format(v) : '·'}</td>`; }).join(''); return tr(`<td class="sticky">${lbl}</td><td class="c muted">t</td>${cells}<td class="n"><b>${fmt0.format(s)}</b></td>`, 'ton'); };
+  t1 += tonRow('Ton molidas secas (RESUMEN K)', 'TON_MOL') + tonRow('Ton acarreadas c/flete (FLETES)', 'TON_ACA');
+  const tot = days.map(() => 0); let t2 = '';
+  cs.sort((x, y) => areaOrder(x.area) - areaOrder(y.area));
+  cs.forEach(c => {
+    const b = baseVal(c, k), p = P(c, k); let s = 0, sc = 0;
+    const ok = isN(b) && isN(p);
+    const cells = days.map((x, j) => { if (x > ct || !ok) return `<td class="n off">·</td>`; const v = (b * ton(c, k, x) - cons(c, k, x)) * p; s += v; tot[j] += v; return `<td class="n ${cls(v)}">${fmt0.format(v / 1000)}</td>`; }).join('');
+    const cells2 = days.map(x => { if (x > ct) return `<td class="n off">·</td>`; const v = cons(c, k, x); sc += v; return `<td class="n">${v ? fmt0.format(v) : '·'}</td>`; }).join('');
+    const tag = `<span class="ar" style="background:${areaColor(c.area)}">${esc(c.area)}</span>`;
+    t1 += tr(`<td class="sticky"><b>${esc(c.con)}</b>${tag}</td><td class="c muted">${unidad(c)}</td>${cells}<td class="n ${cls(s)}"><b>${ok ? money(s) : '–'}</b></td>`);
+    t2 += tr(`<td class="sticky">${esc(c.con)}${tag}</td><td class="c muted">${c.tipo === 'Reactivo' ? 'kg' : '$'}</td>${cells2}<td class="n"><b>${fmt0.format(sc)}</b></td>`);
+  });
+  let acc = 0;
+  t1 += tr(`<td class="sticky">TOTAL día (miles $)</td><td></td>${tot.map((v, j) => `<td class="n ${cls(v)}">${j + 1 > ct ? '·' : fmt0.format(v / 1000)}</td>`).join('')}<td class="n"><b>${money(tot.reduce((a, b) => a + b, 0))}</b></td>`, 'sumr');
+  t1 += tr(`<td class="sticky">ACUMULADO (miles $)</td><td></td>${tot.map((v, j) => { acc += v; return `<td class="n ${cls(acc)}">${j + 1 > ct ? '·' : fmt0.format(acc / 1000)}</td>`; }).join('')}<td></td>`, 'sumr');
+  h += `<div class="card scroll"><h3>1 · Aportación por día (miles de $) · (base × ton del día − consumo del día) × precio</h3><table class="tbl mx">${head}${t1}</table></div>
+        <div class="card scroll" style="margin-top:14px"><h3>2 · Consumo del día · reactivos en kg (Balance) · costos en $ (Costos)</h3><table class="tbl mx">${head}${t2}</table></div>`;
+  $('#v-diario').innerHTML = h;
+}
+
+/* ---------------- ANUAL ---------------- */
+function rAnual() {
+  const y = kY(S.ui.mes), ks = [...Array(12)].map((_, i) => ym(y, i + 1));
+  const cs = activos().sort((a, b) => areaOrder(a.area) - areaOrder(b.area));
+  const val = (c, k) => aport(c, k);
+  let h = `<div class="banner ${S.ui.vs === 'Objetivo' ? 'obj' : esOficial() ? 'mes' : 'fijo'}">PAC ${y} — aportación por mes · vs ${S.ui.vs === 'Objetivo' ? 'OBJETIVO (consulta)' : esOficial() ? 'MES ANTERIOR (oficial)' : lab(S.ui.base).toUpperCase() + ' fijo (consulta)'}</div>`;
+  const totM = ks.map(k => { const vs = cs.map(c => val(c, k)).filter(isN); return vs.length ? vs.reduce((a, b) => a + b, 0) : null; });
+  // gráfica
+  const W = 1000, H = 250, L = 80, R = 10, T = 22, B = 48, vs = totM.filter(isN), mx = Math.max(1, ...vs.map(Math.abs));
+  const mn = Math.min(0, ...vs), mxv = Math.max(0, ...vs), Y = v => T + (mxv - v) / ((mxv - mn) || 1) * (H - T - B), bw = (W - L - R) / 12;
+  let g = `<svg viewBox="0 0 ${W} ${H}"><line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="#9CA3AF"/>`;
+  [mxv, mn].forEach(v => { if (v) g += `<text x="${L - 6}" y="${Y(v) + 4}" font-size="11" text-anchor="end" fill="#6B7280">${moneyM(v)}</text>`; });
+  totM.forEach((v, i) => { const x = L + i * bw + bw * .2, w = bw * .6;
+    if (isN(v)) { const y0 = Y(Math.max(v, 0)), hh = Math.abs(Y(v) - Y(0)); g += `<rect x="${x}" y="${y0}" width="${w}" height="${Math.max(hh, 1)}" rx="4" fill="${v >= 0 ? '#2E8B57' : '#C0392B'}" data-tip="${lab(ks[i])}: ${money(v)}"/>`;
+      g += `<text x="${x + w / 2}" y="${v >= 0 ? y0 - 5 : Y(v) + 14}" font-size="11" font-weight="600" text-anchor="middle" fill="#374151">${moneyM(v)}</text>`; }
+    g += `<text x="${x + w / 2}" y="${H - 10}" font-size="11" text-anchor="middle" fill="#374151">${lab(ks[i])}</text>`; });
+  g += '</svg>';
+  h += `<div class="card chart" style="margin-bottom:14px"><h3>Total PAC por mes</h3>${g}</div>`;
+  let t = `<table class="tbl"><thead><tr><th style="text-align:left">Área</th><th style="text-align:left">Concepto</th>${ks.map(k => `<th>${lab(k)}</th>`).join('')}<th class="ob">TOTAL AÑO</th></tr></thead><tbody>`;
+  t += `<tr><td colspan="2" class="muted" style="text-align:right">Corte (día)</td>${ks.map(k => `<td class="c muted">${corte(k) || ''}</td>`).join('')}<td></td></tr>`;
+  t += `<tr><td colspan="2" class="muted" style="text-align:right">Estado</td>${ks.map(k => { const e = estado(k); return `<td class="c muted" style="white-space:normal;font-size:10px">${S.meses[k] ? esc(e.t.replace('PRELIMINAR · ', 'Prelim. ')) : ''}</td>`; }).join('')}<td></td></tr>`;
+  cs.forEach(c => { const v = ks.map(k => val(c, k)); const s = v.filter(isN).reduce((a, b) => a + b, 0);
+    t += `<tr class="row"><td><span class="ar chip" style="background:${areaColor(c.area)};padding:1px 8px">${esc(c.area)}</span></td><td><b>${esc(c.con)}</b></td>${v.map(x => `<td class="n ${cls(x)}">${isN(x) ? money(x) : ''}</td>`).join('')}<td class="n ${cls(s)}" style="background:#FFF8E6"><b>${v.some(isN) ? money(s) : ''}</b></td></tr>`; });
+  const ty = totM.filter(isN).reduce((a, b) => a + b, 0);
+  t += `<tr class="tot"><td colspan="2">${S.ui.vs === 'Objetivo' ? 'TOTAL vs OBJETIVO' : esOficial() ? 'TOTAL PAC' : 'TOTAL vs ' + lab(S.ui.base)}</td>${totM.map(v => `<td class="n">${isN(v) ? money(v) : ''}</td>`).join('')}<td class="n">${money(ty)}</td></tr>`;
+  [...S.areas].forEach(a => { const v = ks.map(k => { const xs = cs.filter(c => c.area === a).map(c => val(c, k)).filter(isN); return xs.length ? xs.reduce((p, q) => p + q, 0) : null; });
+    t += `<tr class="sub"><td colspan="2" style="color:${areaColor(a)}">${esc(a)}</td>${v.map(x => `<td class="n ${cls(x)}">${isN(x) ? money(x) : ''}</td>`).join('')}<td class="n ${cls(v.filter(isN).reduce((p, q) => p + q, 0))}">${v.some(isN) ? money(v.filter(isN).reduce((p, q) => p + q, 0)) : ''}</td></tr>`; });
+  h += `<div class="card scroll">${t}</tbody></table></div>`;
+  $('#v-anual').innerHTML = h; bindTips($('#v-anual'));
+}
+
+/* ---------------- IMPORTAR / MESES ---------------- */
+function rImportar() {
+  const ms = listaMeses();
+  let t = `<table class="tbl"><thead><tr><th>Mes</th><th style="text-align:left">Archivo BALANCE</th><th>Importado</th><th>Últ. día ton</th><th style="text-align:left">Archivo COSTOS</th><th>Importado</th><th>Costos al día</th><th class="ob" title="Normalmente vacío. Solo si quieres forzar el corte a un día distinto">Ajuste corte<br><span style="font-weight:400;font-size:10px">(opcional)</span></th><th>CORTE</th><th>Ton molidas al corte</th><th>Ton programadas<br><span style="font-weight:400;font-size:10px">(PROYECCIONES C2)</span></th><th style="text-align:left">Estado</th><th></th></tr></thead><tbody>`;
+  ms.forEach(k => { const M = S.meses[k] || {}, e = estado(k), ct = corte(k); let tm = 0; for (let d = 1; d <= ct; d++) { const r = S.bal[k] && S.bal[k][d]; if (r && isN(r.TON_MOL)) tm += r.TON_MOL; }
+    t += `<tr><td class="c"><b>${lab(k)}</b></td><td style="font-size:11px;white-space:normal;max-width:210px">${esc(M.fbal || '')}</td><td class="c muted">${fdate(M.ibal)}</td><td class="c">${M.ult || ''}</td>
+      <td style="font-size:11px;white-space:normal;max-width:210px">${esc(M.fcos || '')}</td><td class="c muted">${fdate(M.icos)}</td><td class="c">${M.cos || ''}</td>
+      <td class="c"><input class="inp n s" value="${M.man ?? ''}" onchange="setMes('${k}','man',this.value)"></td><td class="c"><b>${ct || ''}</b></td><td class="n">${ct ? fmt0.format(tm) : ''}</td>
+      <td class="n">${isN(M.prog) ? fmt0.format(M.prog) : ''}</td>
+      <td class="est-${S.meses[k] ? e.c : ''}" style="white-space:normal;min-width:190px">${S.meses[k] ? esc(e.t) : ''}</td>
+      <td>${S.meses[k] ? `<button class="btn sm rd" onclick="borrarMes('${k}')" title="Borrar los datos de este mes">✕</button>` : ''}</td></tr>`; });
+  t += '</tbody></table>';
+  $('#v-importar').innerHTML = `
+   <div class="card" style="margin-bottom:14px"><h3>Importar archivos</h3>
+    <div class="drop" id="drop">Arrastra aquí el <b>Balance Metalúrgico</b> y/o el <b>Costos_Diario_MRT</b> (uno o varios, de cualquier mes)<br>o
+      <label class="btn" style="display:inline-block;margin-top:8px">Seleccionar archivos…<input type="file" id="files" accept=".xlsx,.xlsm,.xls" multiple hidden></label>
+      <div class="hint" style="margin-top:6px">Se detecta solo si es Balance o Costos y de qué mes es. Ese mes se reescribe en su lugar; los demás no se tocan. Los archivos no se modifican.</div></div>
+    <div class="log" id="log" style="${LOGTXT ? 'display:block' : ''}">${esc(LOGTXT)}</div></div>
+   <div class="card scroll" style="margin-bottom:14px"><h3>Control de meses</h3>${t}
+     <div class="hint" style="margin-top:8px"><b>CORTE automático</b> = el menor entre Últ. día ton y Costos al día, para que reactivos y costos vayan parejos. "Ajuste corte" normalmente se deja vacío; solo sirve si quieres forzar otro día (por ejemplo, ver el mes hasta el día 10). Ton programadas se toma solo del Balance (PROYECCIONES C2) y es la base del objetivo (presupuesto ÷ ton programadas).</div></div>
+   <div class="card"><h3>Respaldo y compartir</h3>
+     <div class="bar-tools"><button class="btn" onclick="descargarRespaldo()">⤓ Descargar respaldo (.json)</button>
+     <label class="btn gr">⤒ Cargar respaldo…<input type="file" accept=".json" hidden onchange="cargarRespaldo(this.files[0])"></label>
+     <button class="btn or" onclick="exportExcel()">⤓ Exportar todo a Excel</button>
+     <button class="btn rd" onclick="reiniciar()">Restablecer datos de fábrica</button></div>
+     <div class="hint">${GH ? `Lo que importas o cambias queda primero en este navegador (arriba sale <b>● Sin guardar</b>). Con <b>💾 Guardar</b> + tu llave de GitHub se guarda en el repositorio <b>${esc(GH.owner + '/' + GH.repo)}</b> y todos lo ven en el link (2–5 min). <b>↺</b> descarta tus cambios locales. ${ghToken() ? '<button class="btn sm gr" onclick="olvidarToken()">Olvidar mi llave en este navegador</button>' : ''}` : `Lo que importas o cambias queda primero en este navegador (arriba sale <b>● Sin guardar</b>). Con <b>💾 Guardar</b> + contraseña se escribe dentro del mismo PAC.html (Chrome o Edge); en Dropbox los demás lo abren y ven lo último (F5 si ya lo tenían abierto). <b>↺</b> descarta tus cambios locales. El respaldo .json es opcional.`}</div></div>`;
+  $('#files').onchange = e => importarArchivos([...e.target.files]);
+  const dz = $('#drop');
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add('hot'); }; dz.ondragleave = () => dz.classList.remove('hot');
+  dz.ondrop = e => { e.preventDefault(); dz.classList.remove('hot'); importarArchivos([...e.dataTransfer.files]); };
+}
+function setMes(k, f, v) { S.meses[k] = S.meses[k] || {}; S.meses[k][f] = v === '' ? null : +v; save(); render(); }
+function borrarMes(k) { if (!confirm('¿Borrar los datos importados de ' + lab(k) + '?')) return; delete S.meses[k]; delete S.bal[k]; delete S.cos[k]; save(); render(); }
+function reiniciar() { if (!confirm('Se borrará todo lo importado y el catálogo regresará al original. ¿Continuar?')) return; S = JSON.parse(JSON.stringify(SEED)); save(); load(); render(); }
+function descargarRespaldo() { bajar(new Blob([JSON.stringify(S)], { type: 'application/json' }), 'PAC_respaldo_' + new Date().toISOString().slice(0, 10) + '.json'); }
+function cargarRespaldo(f) { if (!f) return; f.text().then(t => { const o = JSON.parse(t); if (!o.cat || !o.meses) throw 0; S = o; save(); load(); render(); toast('Respaldo cargado'); }).catch(() => toast('Ese archivo no es un respaldo del PAC')); }
+function bajar(blob, nombre) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombre; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); }
+
+/* ---- lectura de Excel (SheetJS) ---- */
+let LOGTXT = '';
+function logl(t) { LOGTXT += t + '\n'; const l = $('#log'); if (!l) return; l.style.display = 'block'; l.textContent = LOGTXT; l.scrollTop = 1e6; }
+function hoja(wb, ...nombres) { const N = nombres.map(n => n.trim().toUpperCase()); const n = wb.SheetNames.find(s => N.includes(s.trim().toUpperCase())); return n ? wb.Sheets[n] : null; }
+const cv = (ws, a) => { const c = ws && ws[a]; return c ? c.v : undefined; };
+const cvRC = (ws, r, c) => cv(ws, XLSX.utils.encode_cell({ r: r - 1, c: c - 1 }));
+function serialYMD(v) { if (!isN(v) || v < 30000 || v > 80000) return null; const o = XLSX.SSF.parse_date_code(v); return o ? { y: o.y, m: o.m, d: o.d } : null; }
+const colN = L => XLSX.utils.decode_col(String(L).toUpperCase());
+const esCol = s => /^[A-Z]{1,3}$/.test(String(s || '').toUpperCase());
+async function importarArchivos(files) {
+  LOGTXT = '';
+  for (const f of files) {
+    try {
+      logl('Leyendo ' + f.name + ' …');
+      const buf = await f.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array', cellDates: false, cellFormula: false, cellHTML: false, cellStyles: false });
+      let r;
+      if (hoja(wb, 'HUM Y CAB CALC') && hoja(wb, 'RESUMEN')) r = impBalance(wb, f.name);
+      else if (hoja(wb, 'BD') && (hoja(wb, 'PB') || hoja(wb, '1'))) r = impCostos(wb, f.name);
+      else throw new Error('no parece Balance ni Costos Diario');
+      logl('  ✔ ' + r); S.ui.mes = r.k || S.ui.mes;
+    } catch (e) { logl('  ✕ ' + f.name + ': ' + (e.message || e)); }
+  }
+  logl('— listo —'); save(); MEMO = {}; renderTop(); rImportar(); toast('Importación terminada');
+}
+function impBalance(wb, nombre) {
+  const din = hoja(wb, 'DINÁMICA', 'DINAMICA'), hum = hoja(wb, 'HUM Y CAB CALC'), res = hoja(wb, 'RESUMEN'), fle = hoja(wb, 'FLETES');
+  let ini = serialYMD(cv(din, 'B8')) || serialYMD(cv(hum, 'B8'));
+  if (!ini) throw new Error('no encuentro la fecha de inicio (DINÁMICA!B8)');
+  const k = ym(ini.y, ini.m), D = dimK(k), rows = [null]; for (let d = 1; d <= D; d++) rows.push({});
+  let ult = 0;
+  for (let r = 8; r <= 38; r++) { const f = serialYMD(cvRC(res, r, 3)); if (f && f.y === ini.y && f.m === ini.m) { const v = cvRC(res, r, 11); if (isN(v)) { rows[f.d].TON_MOL = v; if (v > 0) ult = Math.max(ult, f.d); } } }
+  const codes = S.balCodes.map(x => String(x.c).toUpperCase()).filter(c => c !== 'TON_MOL' && c !== 'TON_ACA' && esCol(c));
+  for (let r = 8; r <= 38; r++) { const f = serialYMD(cvRC(hum, r, 2)); if (!(f && f.y === ini.y && f.m === ini.m)) continue;
+    codes.forEach(c => { const v = cv(hum, c + r); if (isN(v)) rows[f.d][c] = v; }); }
+  if (fle) {
+    let tot = S.fletes.tot || 'DM'; const exc = S.fletes.exc;
+    outer: for (let r = 1; r <= 5; r++) for (let c = 1; c <= 200; c++) { const v = cvRC(fle, r, c); if (typeof v === 'string' && v.trim().toUpperCase() === 'TOTAL TONELADAS') { tot = XLSX.utils.encode_col(c - 1); break outer; } }
+    let r1 = 0; for (let r = 1; r <= 400; r++) { if (cvRC(fle, r, 2) === 1) { r1 = r; break; } }
+    if (r1 && esCol(tot)) for (let d = 1; d <= D; d++) { const rr = r1 + d - 1; if (cvRC(fle, rr, 2) !== d) continue; const t = cv(fle, tot + rr); if (!isN(t)) continue;
+      rows[d].TON_ACA = t - (esCol(exc) && isN(cv(fle, exc + rr)) ? cv(fle, exc + rr) : 0); }
+  }
+  const pr = hoja(wb, 'PROYECCIONES'), prog = isN(cv(pr, 'C2')) ? cv(pr, 'C2') : null;
+  S.bal[k] = rows; S.meses[k] = Object.assign(S.meses[k] || {}, { fbal: nombre, ibal: new Date().toISOString(), ult, prog });
+  return { k, toString: () => `BALANCE ${lab(k)} · ${ult} días con toneladas${isN(prog) ? ' · ton programadas ' + fmt0.format(prog) : ''}` };
+}
+function impCostos(wb, nombre) {
+  const bd = hoja(wb, 'BD'), pb = hoja(wb, 'PB'), h1 = hoja(wb, '1');
+  let f = serialYMD(cv(h1, 'E4'));
+  if (!f) { const i = MESL.findIndex(m => nombre.toUpperCase().includes(m)); const y = (nombre.match(/20\d\d/) || [S.year])[0]; if (i >= 0) f = { y: +y, m: i + 1, d: 1 }; }
+  if (!f) throw new Error('no pude saber el mes del archivo (hoja 1!E4)');
+  const k = ym(f.y, f.m), D = dimK(k), rows = [null]; for (let d = 1; d <= D; d++) rows.push({});
+  const rng = XLSX.utils.decode_range(bd['!ref'] || 'A1:AG100'); const map = {};
+  for (let r = 5; r <= rng.e.r + 1; r++) { const id = cvRC(bd, r, 1); if (isN(id)) map[String(id)] = r; }
+  // nombres de filas nuevas
+  S.cosCodes.forEach(x => { const r = map[String(x.c)]; if (r && !x.n) { const n = cvRC(bd, r, 2); if (typeof n === 'string') x.n = n.trim(); } });
+  let falt = [];
+  S.cosCodes.forEach(x => { const r = map[String(x.c)]; if (!r) { falt.push(x.c); return; }
+    for (let d = 1; d <= D; d++) { const v = cvRC(bd, r, 2 + d); if (!isN(v)) continue; const pv = d > 1 ? cvRC(bd, r, 1 + d) : 0; rows[d][String(x.c)] = v - (isN(pv) ? pv : 0); } });
+  let ult = 0; if (pb) for (let r = 4; r <= 40; r++) { const dd = cvRC(pb, r, 1), t = cvRC(pb, r, 2); if (isN(dd) && dd <= 31 && isN(t) && t > 0) ult = dd; }
+  if (!ult) { const v = prompt('No pude leer el último día con toneladas en PB de ' + nombre + '. ¿Hasta qué día trae costos?', ''); ult = Math.max(0, Math.min(D, +v || 0)); }
+  S.cos[k] = rows; S.meses[k] = Object.assign(S.meses[k] || {}, { fcos: nombre, icos: new Date().toISOString(), cos: ult });
+  return { k, toString: () => `COSTOS ${lab(k)} · costos al día ${ult}${falt.length ? ' · filas no encontradas: ' + falt.join(', ') : ''}` };
+}
+
+/* ---------------- CATÁLOGO ---------------- */
+function rCatalogo() {
+  const km = S.ui.catMes || S.ui.mes, ms = listaMeses();
+  let a = `<div class="card" style="margin-bottom:14px"><h3>Áreas (el orden manda en el PAC, el Pareto y el ANUAL)</h3><div class="chips">` +
+    S.areas.map((x, i) => `<span class="chip" style="background:${ACOL[i % ACOL.length]}">${i > 0 ? `<button title="Subir" onclick="movArea(${i},-1)">◂</button>` : ''}${esc(x)}<button title="Quitar" onclick="delArea(${i})">✕</button></span>`).join('') +
+    `<span><input class="inp" id="newArea" placeholder="Nueva área" style="width:140px"> <button class="btn sm" onclick="addArea()">+ Agregar</button></span></div>
+    <div style="margin-top:12px" class="hint">Premisa fletes (hoja FLETES del Balance): Total <input class="inp s" value="${esc(S.fletes.tot)}" onchange="S.fletes.tot=this.value.toUpperCase();save()"> − Restar <input class="inp s" value="${esc(S.fletes.exc || '')}" onchange="S.fletes.exc=this.value.toUpperCase();save()"> (Cerro Blanco no paga flete). Si encuentra el título "Total Toneladas" lo usa solo.</div></div>`;
+  const opt = (arr, v) => arr.map(o => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('');
+  let t = `<table class="tbl"><thead><tr><th>#</th><th>Activo</th><th>Área</th><th style="text-align:left">Concepto</th><th>Tipo</th><th>Origen</th><th>Ref 1</th><th>Ref 2</th><th>Ref 3</th><th>Ref 4</th><th>Premisa</th><th>Unidad</th><th title="Solo se usa si el mes anterior no tiene datos">Mes ant. inicial</th>
+    <th style="background:#2F5597">Precio $/kg<br>${lab(km)}</th><th class="ob">Objetivo<br>${lab(km)}</th><th>${lab(km)} real</th><th></th></tr></thead><tbody>`;
+  S.cat.forEach((c, i) => {
+    const pv = c.precio && c.precio[km], ov = c.obj && c.obj[km], ph = lastVal(c.precio, km), oh = lastVal(c.obj, km), ar = A(c, km);
+    t += `<tr style="${c.act ? '' : 'opacity:.5'}"><td class="c muted">${i + 1}</td>
+     <td class="c"><select class="inp" style="min-width:62px" onchange="setC(${i},'act',this.value==='Sí')">${opt(['Sí', 'No'], c.act ? 'Sí' : 'No')}</select></td>
+     <td><select class="inp" style="min-width:140px;background:${areaColor(c.area)};color:#fff;font-weight:600" onchange="setC(${i},'area',this.value)">${opt([...S.areas, ...(S.areas.includes(c.area) ? [] : [c.area])], c.area)}</select></td>
+     <td><input class="inp" style="min-width:190px" value="${esc(c.con)}" onchange="setC(${i},'con',this.value)"></td>
+     <td><select class="inp" style="min-width:96px" onchange="setC(${i},'tipo',this.value)">${opt(['Reactivo', 'Costo'], c.tipo)}</select></td>
+     <td><select class="inp" style="min-width:92px" onchange="setC(${i},'ori',this.value)">${opt(['Balance', 'Costos'], c.ori)}</select></td>
+     ${[0, 1, 2, 3].map(j => `<td><input class="inp s" value="${esc(c.refs[j] || '')}" onchange="setRef(${i},${j},this.value)" title="${refNombre(c, c.refs[j])}"></td>`).join('')}
+     <td><select class="inp" style="min-width:108px" onchange="setC(${i},'prem',this.value)">${opt(['Molidas', 'Acarreadas'], c.prem)}</select></td>
+     <td class="c muted">${unidad(c)}</td>
+     <td><input class="inp n" style="width:80px" value="${c.oini ?? ''}" onchange="setC(${i},'oini',this.value===''?null:+this.value)"></td>
+     <td>${c.tipo === 'Reactivo' ? `<input class="inp n" style="width:80px" value="${pv ?? ''}" placeholder="${ph ?? ''}" onchange="setMap(${i},'precio','${km}',this.value)">` : '<span class="muted">—</span>'}</td>
+     <td><input class="inp n" style="width:90px;background:#FFF3D6" value="${ov ?? ''}" placeholder="${isN(oh) ? +oh.toFixed(4) : ''}" onchange="setMap(${i},'obj','${km}',this.value)"></td>
+     <td class="n muted">${isN(ar) ? (c.tipo === 'Reactivo' ? fmt3 : fmt2).format(ar) : ''}</td>
+     <td style="white-space:nowrap"><button class="btn sm gr" title="Subir" onclick="movC(${i},-1)">▲</button> <button class="btn sm gr" title="Bajar" onclick="movC(${i},1)">▼</button> <button class="btn sm rd" title="Borrar" onclick="delC(${i})">✕</button></td></tr>`;
+  });
+  t += `</tbody></table>`;
+  $('#v-catalogo').innerHTML = a + `<div class="card scroll"><div class="bar-tools"><h3 style="margin:0">Conceptos</h3><button class="btn sm" onclick="addC()">+ Agregar concepto</button>
+    <span class="hint" style="margin-left:auto">Precio y Objetivo del mes:</span><div class="sel"><select class="inp" onchange="S.ui.catMes=this.value; saveUI();rCatalogo()">${ms.map(k => `<option value="${k}" ${k === km ? 'selected' : ''}>${lab(k)}</option>`).join('')}</select></div></div>${t}
+    <div class="hint" style="margin-top:8px;line-height:1.6">• <b>Origen Balance</b>: Ref = columna de HUM Y CAB CALC (ej. AR; Floculante = BA + BB). <b>Origen Costos</b>: Ref = número de fila del Costos Diario (ej. 7 Fletes). Se suman las Ref.<br>
+    • <b>Precio y Objetivo</b>: captura el valor en el mes en que cambia; el gris es el valor vigente que viene de un mes anterior. Puedes escribir el objetivo ya dividido (ej. 786900/34000 → 23.14).<br>
+    • <b>Mes anterior</b>: automático (ponderado del mes previo importado). "Mes ant. inicial" solo se usa si el mes previo no tiene datos.<br>
+    • <b>Activo = No</b> oculta el concepto sin borrar su historia. Si la Ref no existe en la BD, agrégala en la pestaña BASE DE DATOS y reimporta.</div></div>`;
+}
+function refNombre(c, r) { if (!r) return ''; const L = c.ori === 'Balance' ? S.balCodes : S.cosCodes; const x = L.find(z => String(z.c).toUpperCase() === String(r).toUpperCase()); return x ? x.n : '⚠ no está en la BD'; }
+function setC(i, f, v) { S.cat[i][f] = v; save(); render(); }
+function setRef(i, j, v) { const c = S.cat[i]; v = String(v).trim().toUpperCase(); c.refs[j] = v; c.refs = c.refs.filter(x => x); save(); render(); }
+function setMap(i, f, k, v) { const c = S.cat[i]; c[f] = c[f] || {}; v = String(v).trim(); if (v === '') delete c[f][k]; else { let n; try { n = /^[\d.\s+\-*/()]+$/.test(v) ? Function('return (' + v + ')')() : +v; } catch (e) { n = NaN; } if (!isN(n)) { toast('Valor no válido'); return; } c[f][k] = n; } save(); render(); }
+function addC() { S.cat.push({ act: true, area: S.areas[0] || '', con: 'Nuevo concepto', tipo: 'Costo', ori: 'Costos', refs: [], prem: 'Molidas', oini: null, precio: {}, obj: {} }); save(); render(); }
+function delC(i) { if (!confirm('¿Borrar "' + S.cat[i].con + '"? (Para solo ocultarlo usa Activo = No)')) return; S.cat.splice(i, 1); save(); render(); }
+function movC(i, d) { const j = i + d; if (j < 0 || j >= S.cat.length) return; [S.cat[i], S.cat[j]] = [S.cat[j], S.cat[i]]; save(); render(); }
+function addArea() { const v = $('#newArea').value.trim(); if (!v || S.areas.includes(v)) return; S.areas.push(v); save(); render(); }
+function delArea(i) { if (S.cat.some(c => c.area === S.areas[i]) && !confirm('Hay conceptos en "' + S.areas[i] + '". ¿Quitar el área de la lista de todos modos?')) return; S.areas.splice(i, 1); save(); render(); }
+function movArea(i, d) { const j = i + d; [S.areas[i], S.areas[j]] = [S.areas[j], S.areas[i]]; save(); render(); }
+
+/* ---------------- BASE DE DATOS ---------------- */
+function rBD() {
+  const src = S.ui.bdSrc || 'bal', ms = listaMeses().filter(k => S.meses[k]), k = S.ui.bdMes && S.meses[S.ui.bdMes] ? S.ui.bdMes : (ms[ms.length - 1] || S.ui.mes);
+  const codes = src === 'bal' ? S.balCodes : S.cosCodes, rows = (src === 'bal' ? S.bal : S.cos)[k] || [], D = dimK(k);
+  let t = `<table class="tbl mx"><tr><th class="sticky">Día</th>${codes.map(x => `<th title="${esc(x.n)}">${esc(x.c)}<br><span style="font-weight:400;font-size:10px">${esc((x.n || '').slice(0, 18))}</span></th>`).join('')}</tr>`;
+  for (let d = 1; d <= D; d++) { const r = rows[d] || {}; t += `<tr><td class="sticky">${d}-${MES[kM(k) - 1]}</td>${codes.map(x => { const v = r[String(x.c).toUpperCase()] ?? r[String(x.c)]; return `<td class="n">${isN(v) ? fmt2.format(v) : '·'}</td>`; }).join('')}</tr>`; }
+  t += `<tr class="sumr"><td class="sticky">Σ mes</td>${codes.map(x => { let s = 0; for (let d = 1; d <= D; d++) { const r = rows[d] || {}; const v = r[String(x.c).toUpperCase()] ?? r[String(x.c)]; if (isN(v)) s += v; } return `<td class="n">${fmt2.format(s)}</td>`; }).join('')}</tr></table>`;
+  $('#v-bd').innerHTML = `<div class="card scroll"><div class="bar-tools"><div class="pareto"><div class="seg"><button class="${src === 'bal' ? 'on' : ''}" onclick="S.ui.bdSrc='bal'; saveUI();rBD()">Balance</button><button class="${src === 'cos' ? 'on' : ''}" onclick="S.ui.bdSrc='cos'; saveUI();rBD()">Costos</button></div></div>
+    <select class="inp" style="width:120px" onchange="S.ui.bdMes=this.value; saveUI();rBD()">${ms.map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${lab(x)}</option>`).join('')}</select>
+    <span class="hint">${src === 'bal' ? 'Valores diarios del Balance (kg y toneladas).' : 'Ejercido diario = acumulado del día − día anterior ($).'} Archivo: ${esc((S.meses[k] || {})[src === 'bal' ? 'fbal' : 'fcos'] || '—')}</span>
+    <span style="margin-left:auto"><input class="inp" id="newCode" placeholder="${src === 'bal' ? 'Columna (ej. BD)' : 'Fila (ej. 60)'}" style="width:120px"> <input class="inp" id="newCodeN" placeholder="Nombre" style="width:150px"> <button class="btn sm" onclick="addCode('${src}')">+ Agregar a la BD</button></span></div>${t}
+    <div class="hint" style="margin-top:8px">Para traer un dato nuevo: agrégalo aquí (columna del Balance o fila del Costos) y vuelve a importar los meses que lo necesiten. Luego úsalo como Ref en el CATÁLOGO.</div></div>`;
+}
+function addCode(src) { const c = $('#newCode').value.trim().toUpperCase(), n = $('#newCodeN').value.trim(); if (!c) return; const L = src === 'bal' ? S.balCodes : S.cosCodes;
+  if (src === 'bal' && !esCol(c)) { toast('Escribe la letra de la columna (ej. BD)'); return; } if (src === 'cos' && !/^\d+$/.test(c)) { toast('Escribe el número de fila (ej. 60)'); return; }
+  if (L.some(x => String(x.c).toUpperCase() === c)) { toast('Ya existe'); return; } L.push({ c, n }); save(); rBD(); toast('Agregado. Reimporta los meses que lo necesiten.'); }
+
+/* ---------------- Exportar a Excel ---------------- */
+function exportExcel() {
+  MEMO = {}; const k = S.ui.mes, wb = XLSX.utils.book_new();
+  const rows = filasPAC(k);
+  const pac = [['PAC ' + lab(k) + ' vs ' + modoTxt(), estado(k).t], [], ['Área', 'Concepto', 'Tipo', 'Unidad', 'Base (' + (S.ui.base === 'ant' ? lab(prevK(k)) : lab(S.ui.base)) + ')', 'Objetivo', lab(k), 'Aportación $']];
+  rows.forEach(r => pac.push([r.c.area, r.c.con, r.c.tipo, unidad(r.c), r.b, r.ob, r.a, r.ap])); pac.push(['', 'TOTAL', '', '', '', '', '', rows.reduce((s, r) => s + r.ap, 0)]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(pac), 'PAC');
+  const D = dimK(k), ct = corte(k), dia = [['Concepto', ...[...Array(D)].map((_, i) => i + 1), 'Σ']];
+  activos().filter(c => sums(c, k)).forEach(c => { const b = baseVal(c, k), p = P(c, k); let s = 0; const v = [...Array(D)].map((_, i) => { if (i + 1 > ct || !isN(b) || !isN(p)) return null; const x = (b * ton(c, k, i + 1) - cons(c, k, i + 1)) * p; s += x; return x; }); dia.push([c.con, ...v, s]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(dia), 'PAC DIARIO');
+  const y = kY(k), ks = [...Array(12)].map((_, i) => ym(y, i + 1)), an = [['Área', 'Concepto', ...ks.map(lab), 'Total']];
+  activos().forEach(c => { const v = ks.map(x => aport(c, x)); an.push([c.area, c.con, ...v, v.filter(isN).reduce((a, b) => a + b, 0)]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(an), 'ANUAL');
+  [['bal', S.balCodes, 'BD_BAL'], ['cos', S.cosCodes, 'BD_COS']].forEach(([s, codes, nm]) => {
+    const out = [['Fecha', ...codes.map(x => x.c)], ['', ...codes.map(x => x.n)]];
+    Object.keys(S[s]).sort().forEach(m => { const R = S[s][m]; for (let d = 1; d < R.length; d++) { const r = R[d] || {}; out.push([d + '-' + MES[kM(m) - 1] + '-' + String(kY(m)).slice(2), ...codes.map(x => r[String(x.c).toUpperCase()] ?? r[String(x.c)] ?? null)]); } });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(out), nm);
+  });
+  XLSX.writeFile(wb, 'PAC_' + lab(k) + '.xlsx');
+}
+
+/* ---------------- tooltips ---------------- */
+function bindTips(root) {
+  const tip = $('#tip');
+  root.querySelectorAll('[data-tip]').forEach(el => {
+    el.onmousemove = e => { tip.textContent = el.dataset.tip; tip.style.display = 'block'; tip.style.left = (e.clientX + 12) + 'px'; tip.style.top = (e.clientY + 12) + 'px'; };
+    el.onmouseleave = () => tip.style.display = 'none';
+  });
+}
+
+/* ---------------- arranque ---------------- */
+async function init() {
+  if (GH) { $('#v-pac').innerHTML = '<div class="card">Cargando datos del PAC…</div>'; $('#v-pac').classList.add('on'); SEED = await cargarGH(); FILEAT = (SEED && SEED.savedAt) || ''; }
+  load();
+  $('#selMes').onchange = e => { S.ui.mes = e.target.value; saveUI(); render(); };
+  $('#selVs').onchange = e => { S.ui.vs = e.target.value; saveUI(); render(); };
+  $('#selBase').onchange = e => { S.ui.base = e.target.value; saveUI(); render(); };
+  document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { S.ui.tab = b.dataset.tab; saveUI(); render(); window.scrollTo(0, 0); });
+  render(); initFS();
+}
+window.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
