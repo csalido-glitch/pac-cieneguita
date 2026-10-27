@@ -156,18 +156,26 @@ td .inp{min-width:44px}
   <section class="view" id="v-bd"></section>
   <section class="view help" id="v-ayuda">
     <div class="card">
-      <h3>Cómo se usa</h3>
-      <p><b>1. Importar.</b> Pestaña <span class="pill">IMPORTAR</span> → arrastra o selecciona el <b>Balance Metalúrgico</b> y el <b>Costos_Diario_MRT</b> del mes (pueden ser varios archivos y varios meses a la vez). El PAC detecta solo qué archivo es y de qué mes, y reescribe ese mes en su lugar. Los archivos originales no se modifican.</p>
-      <p><b>2. Consultar.</b> Arriba eliges <b>Mes</b>, <b>Comparar vs</b> (Mes u Objetivo) y <b>Cuál mes</b> (Mes anterior o cualquier mes importado). Todo se recalcula al instante: PAC, PAC DIARIO y ANUAL.</p>
+      <h3>Para consultar (todos)</h3>
+      <p><b>¿Qué mide?</b> Cuánto gastamos <b>por tonelada molida seca</b> este mes contra el mes anterior, concepto por concepto (reactivos, aceros, energía, fletes, rentas, administración…).</p>
       <ul>
-        <li><b>Oficial</b> = Mes vs Mes anterior. Mes fijo y Objetivo son <i>consulta</i>.</li>
-        <li><b>Corte</b>: reactivos y costos se muestran hasta el mismo día (el menor entre balance y costos). Si costos va atrás, el mes sale como <i>PRELIMINAR</i>.</li>
-        <li><b>Mes anterior</b>: automático, ponderado del mes previo importado (Σ consumo ÷ Σ ton).</li>
-        <li><b>Aportación</b> = (base × ton del día − consumo del día) × precio. Positivo = ahorro.</li>
+        <li><b>Aportación</b> = (base × ton del día − consumo real) × precio. <span class="pos"><b>Positivo (verde) = ahorro</b></span> · <span class="neg"><b>Negativo (rojo) = gastamos más</b></span>.</li>
+        <li><b>Selectores de arriba:</b> <b>Mes</b> (qué mes ver), <b>Comparar vs</b> (contra un Mes o contra el Objetivo/presupuesto) y <b>Cuál mes</b>. <b>Mes anterior = PAC oficial</b>; cualquier otro mes u Objetivo es de consulta.</li>
+        <li><b>Corte:</b> reactivos y costos se muestran hasta el mismo día. Si costos va atrás, el mes dice <i>PRELIMINAR</i>; cuando se emparejan dice <i>OFICIAL</i>.</li>
+        <li>Clic en un concepto de la tabla → su gráfica día por día.</li>
       </ul>
-      <p><b>3. Configurar.</b> Pestaña <span class="pill">CATÁLOGO</span>: agrega, quita (Activo = No) o reordena conceptos y áreas; captura el Precio de reactivos y el Objetivo del mes (vale de ese mes en adelante hasta que captures otro).</p>
-      <p><b>4. Revisar datos.</b> Pestaña <span class="pill">BASE DE DATOS</span>: lo importado día por día. Para traer un dato nuevo del Balance (otra columna) o de Costos (otra fila), agrégalo ahí y reimporta.</p>
-      <p><b>5. Guardar y compartir.</b> Este PAC vive en un link de GitHub. Lo que importas o cambias queda primero en tu navegador (arriba sale <b>● Sin guardar</b>). El responsable da <b>💾 Guardar</b> con su llave de GitHub y los datos se guardan en el repositorio; todos los que abran el link ven lo último en 2–5 minutos (F5). Sin la llave nadie puede guardar; los demás solo consultan. <b>↺</b> descarta los cambios de tu navegador. <b>Exportar a Excel</b> saca PAC, diario, anual y BD en un .xlsx.</p>
+      <p><b>Pestañas:</b> <span class="pill">PAC</span> resumen del mes con semáforo y Pareto · <span class="pill">PAC DIARIO</span> aportación y consumo de cada día · <span class="pill">ANUAL</span> el año mes por mes y por área · <span class="pill">IMPORTAR</span> qué está cargado y hasta qué día · <span class="pill">CATÁLOGO</span> conceptos, precios y objetivos · <span class="pill">BASE DE DATOS</span> los datos diarios tal cual.</p>
+      <ul>
+        <li><b>Se actualiza</b> conforme se cargan el Balance Metalúrgico y el Costos Diario. Si ya lo tenías abierto, presiona <b>F5</b>.</li>
+        <li><b>Puedes mover todo sin miedo:</b> nada de lo que hagas cambia el PAC de los demás. Si aparece <b>● Sin guardar</b>, da <b>↺</b> para regresar a lo oficial.</li>
+        <li><b>Exportar a Excel</b> descarga PAC, diario, anual y BD en un .xlsx. Funciona en PC y celular.</li>
+      </ul>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h3>Para el responsable (actualizar datos)</h3>
+      <p><b>1. Importar.</b> Pestaña <span class="pill">IMPORTAR</span> → arrastra o selecciona el <b>Balance Metalúrgico</b> y el <b>Costos_Diario_MRT</b> del mes (pueden ser varios a la vez). El PAC detecta solo qué archivo es y de qué mes, y reescribe ese mes. Las ton programadas se toman del Balance (PROYECCIONES C2). Los archivos originales no se modifican.</p>
+      <p><b>2. Configurar.</b> Pestaña <span class="pill">CATÁLOGO</span>: agrega, quita (Activo = No) o reordena conceptos; captura Precio de reactivos y Objetivo del mes (vale de ese mes en adelante hasta que captures otro).</p>
+      <p><b>3. Guardar.</b> Da <b>💾 Guardar</b> con la llave de GitHub: los datos se guardan en el repositorio y todos los ven en 2–5 minutos (F5). Sin la llave nadie puede guardar.</p>
     </div>
   </section>
 </main>
