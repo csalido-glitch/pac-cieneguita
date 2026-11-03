@@ -171,6 +171,11 @@ body.locked .top,body.locked main{display:none}
 .gG{background:#fff;color:#4285F4;font-weight:800;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
 .acc-pend{background:#FEF3C7;color:#92400E;border:1px solid #F59E0B;border-radius:8px;padding:8px 12px;font-weight:700;margin-bottom:10px}
 
+.acc-nom{min-width:260px;background:#fff;border-color:transparent}
+.acc-nom:hover{border-color:var(--line2)}
+.acc-nom:focus{border-color:var(--navy2);background:#FFFDF0;outline:none}
+.acc-nom:placeholder-shown{border-color:#F59E0B;background:#FFFBEB}
+
 </style>
 </head>
 <body>
@@ -983,7 +988,7 @@ async function rAccesos() {
   h += `<div class="scroll"><table class="tbl"><thead><tr><th style="text-align:left">Correo</th><th style="text-align:left">Nombre / puesto</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>`;
   ACC.forEach(u => {
     const yo = YO && u.email === YO.email;
-    h += `<tr${u.estado === 'pendiente' ? ' style="background:#FFF8E1"' : ''}><td>${esc(u.email)}${yo ? ' <span class="pill">tú</span>' : ''}</td><td>${esc(u.nombre || '')}</td>
+    h += `<tr${u.estado === 'pendiente' ? ' style="background:#FFF8E1"' : ''}><td>${esc(u.email)}${yo ? ' <span class="pill">tú</span>' : ''}</td><td><input class="inp acc-nom" data-m="${esc(u.email)}" value="${esc(u.nombre || '')}" placeholder="✎ escribe nombre y puesto" title="Escribe y presiona Enter para guardar" onchange="accNombre(this)" onkeydown="if(event.key==='Enter')this.blur()"></td>
       <td class="c">${yo ? esc(u.rol) : sel(u, 'rol', ['consulta', 'captura', 'admin'])}</td>
       <td class="c">${u.estado === 'pendiente' ? `<button class="btn sm" onclick="accSet('${esc(u.email)}','activo')">✔ Autorizar</button> <button class="btn sm rd" onclick="accSet('${esc(u.email)}','negado')">✕ Negar</button>` : yo ? esc(u.estado) : sel(u, 'estado', ['activo', 'negado'])}</td>
       <td class="c">${yo ? '' : `<button class="btn sm gr" onclick="accQuitar('${esc(u.email)}')" title="Quitar de la lista">🗑</button>`}</td></tr>`;
@@ -1010,6 +1015,13 @@ function accAgregar() {
   const m = ($('#accMail').value || '').trim().toLowerCase();
   if (!/^[^@\s]+@(mrtcorporativo\.mx|mrt\.mx)$/.test(m)) { toast('Correo no válido: solo @mrtcorporativo.mx o @mrt.mx'); return; }
   accGuardar(m, $('#accNom').value, $('#accRol').value, 'activo');
+}
+
+function accNombre(el) {
+  const email = el.dataset.m, u = accUser(email), n = el.value.trim();
+  if (!n) { toast('Escribe un nombre'); el.value = u.nombre || ''; return; }
+  if (n === (u.nombre || '')) return;
+  accGuardar(email, n, u.rol || 'consulta', u.estado || 'activo');
 }
 
 </script>
