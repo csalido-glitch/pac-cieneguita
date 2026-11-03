@@ -521,10 +521,12 @@ function renderTop() {
   const fb = $('#fsbox'); if (fb) fb.innerHTML = fsBox();
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.ui.tab));
   const ta = $('#tabAcc'); if (ta) ta.style.display = esAdmin() ? '' : 'none';
+  document.querySelectorAll('.tabs button').forEach(b => { if (b.id !== 'tabAcc') b.style.display = soloConsulta() && !TABS_CONSULTA.includes(b.dataset.tab) ? 'none' : ''; });
   const ub = $('#ubox'); if (ub && YO) ub.innerHTML = `<span class="fs lnk" title="${esc(YO.email)}">👤 ${esc((YO.nombre || YO.email).split(' ').slice(0, 3).join(' '))} · ${esc(YO.rol)}</span><button class="fs lnk" onclick="salirSB()" title="Cerrar sesión">Salir</button>`;
   document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + S.ui.tab));
 }
 function render() {
+  if (soloConsulta() && !TABS_CONSULTA.includes(S.ui.tab)) S.ui.tab = 'pac';
   MEMO = {}; renderTop();
   const f = { pac: rPAC, diario: rDiario, anual: rAnual, importar: rImportar, catalogo: rCatalogo, bd: rBD, ayuda: () => { }, creditos: () => { }, accesos: rAccesos }[S.ui.tab];
   f && f();
@@ -1039,6 +1041,10 @@ function bitacoraHTML() {
   b.forEach(x => { h += `<tr><td>${esc(fdate(x.cuando))}</td><td>${esc(nom(x.email))}<div class="hint">${esc(x.email)}</div></td><td>${ACCION[x.accion] || esc(x.accion)}</td><td class="muted">${x.accion === 'guardar' ? 'versión ' + esc(fdate(x.detalle)) : esc(x.detalle || '')}</td></tr>`; });
   return h + '</tbody></table></div></div>';
 }
+
+/* los de solo consulta ven nada más PAC, PAC DIARIO y ANUAL */
+const TABS_CONSULTA = ['pac', 'diario', 'anual'];
+function soloConsulta() { return !!(SB && YO && !puedeGuardar()); }
 
 </script>
 </body>
