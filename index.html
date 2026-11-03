@@ -948,6 +948,7 @@ async function gateSB() {
     SEED = (r && r.datos) || { v: 1, year: new Date().getFullYear(), areas: [], fletes: { tot: 'DM', exc: 'AU' }, balCodes: [], cosCodes: [], cat: [], meses: {}, bal: {}, cos: {} };
   } catch (e) { gate(`<h2>Error</h2><p>${esc(e.message)}</p><button class="btn" onclick="location.reload()">Reintentar</button>`); return false; }
   FILEAT = SEED.savedAt || '';
+  try { SBC.rpc('pac_visita').then(() => { }, () => { }); } catch (e) { }
   ungate(); return true;
 }
 async function guardarSB(forzar) {
@@ -975,28 +976,31 @@ function fsBoxSB() {
 }
 
 /* ---- pestaña ACCESOS (solo administradores) ---- */
-let ACC = null;
+let ACC = null, ACT = null;
 async function rAccesos() {
   const v = $('#v-accesos');
   if (!esAdmin()) { v.innerHTML = '<div class="card">Solo administradores.</div>'; return; }
-  if (!ACC) { v.innerHTML = '<div class="card">Cargando accesos…</div>'; try { ACC = await rpc('pac_admin_lista'); } catch (e) { v.innerHTML = `<div class="card">✕ ${esc(e.message)}</div>`; return; } }
+  if (!ACC) { v.innerHTML = '<div class="card">Cargando accesos…</div>'; try { ACC = await rpc('pac_admin_lista'); } catch (e) { v.innerHTML = `<div class="card">✕ ${esc(e.message)}</div>`; return; }
+    try { ACT = await rpc('pac_admin_actividad'); } catch (e) { ACT = null; } }
+  const act = {}; ((ACT && ACT.usuarios) || []).forEach(a => act[a.email] = a);
   const pend = ACC.filter(u => u.estado === 'pendiente');
   const sel = (u, k, ops) => `<select class="inp" style="width:auto" onchange="accCambio('${esc(u.email)}','${k}',this.value)">${ops.map(o => `<option${o === u[k] ? ' selected' : ''}>${o}</option>`).join('')}</select>`;
   let h = `<div class="card"><h3>Accesos al PAC</h3>
     <p class="hint"><b>admin</b> = consulta, guarda y da accesos · <b>captura</b> = consulta y guarda datos · <b>consulta</b> = solo ve. Solo correos @mrtcorporativo.mx o @mrt.mx.</p>`;
   if (pend.length) h += `<div class="acc-pend">⏳ ${pend.length} solicitud${pend.length > 1 ? 'es' : ''} pendiente${pend.length > 1 ? 's' : ''}</div>`;
-  h += `<div class="scroll"><table class="tbl"><thead><tr><th style="text-align:left">Correo</th><th style="text-align:left">Nombre / puesto</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>`;
+  h += `<div class="scroll"><table class="tbl"><thead><tr><th style="text-align:left">Correo</th><th style="text-align:left">Nombre / puesto</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th>Accesos 30 d</th><th></th></tr></thead><tbody>`;
   ACC.forEach(u => {
     const yo = YO && u.email === YO.email;
     h += `<tr${u.estado === 'pendiente' ? ' style="background:#FFF8E1"' : ''}><td>${esc(u.email)}${yo ? ' <span class="pill">tú</span>' : ''}</td><td><input class="inp acc-nom" data-m="${esc(u.email)}" value="${esc(u.nombre || '')}" placeholder="✎ escribe nombre y puesto" title="Escribe y presiona Enter para guardar" onchange="accNombre(this)" onkeydown="if(event.key==='Enter')this.blur()"></td>
       <td class="c">${yo ? esc(u.rol) : sel(u, 'rol', ['consulta', 'captura', 'admin'])}</td>
       <td class="c">${u.estado === 'pendiente' ? `<button class="btn sm" onclick="accSet('${esc(u.email)}','activo')">✔ Autorizar</button> <button class="btn sm rd" onclick="accSet('${esc(u.email)}','negado')">✕ Negar</button>` : yo ? esc(u.estado) : sel(u, 'estado', ['activo', 'negado'])}</td>
+      <td class="c">${act[u.email] ? esc(fdate(act[u.email].ultimo)) : '<span class="muted">nunca</span>'}</td><td class="c">${act[u.email] ? act[u.email].n30 : 0}</td>
       <td class="c">${yo ? '' : `<button class="btn sm gr" onclick="accQuitar('${esc(u.email)}')" title="Quitar de la lista">🗑</button>`}</td></tr>`;
   });
   h += `</tbody></table></div>
     <div class="bar-tools" style="margin-top:14px"><input class="inp" id="accMail" placeholder="correo@mrtcorporativo.mx" style="width:240px"><input class="inp" id="accNom" placeholder="Nombre y puesto" style="width:240px">
     <select class="inp" id="accRol" style="width:auto"><option>consulta</option><option>captura</option><option>admin</option></select><button class="btn" onclick="accAgregar()">＋ Dar acceso</button>
-    <button class="btn gr" onclick="ACC=null;rAccesos()">↻ Actualizar</button></div></div>`;
+    <button class="btn gr" onclick="ACC=null;rAccesos()">↻ Actualizar</button></div></div>${bitacoraHTML()}`;
   v.innerHTML = h;
 }
 async function accGuardar(email, nombre, rol, estado) {
@@ -1022,6 +1026,18 @@ function accNombre(el) {
   if (!n) { toast('Escribe un nombre'); el.value = u.nombre || ''; return; }
   if (n === (u.nombre || '')) return;
   accGuardar(email, n, u.rol || 'consulta', u.estado || 'activo');
+}
+
+const ACCION = { entrar: '👁 Entró', guardar: '💾 Guardó datos', solicitar: '📨 Pidió acceso', acceso: '🔑 Cambió acceso', quitar: '🗑 Quitó acceso' };
+function bitacoraHTML() {
+  if (!ACT) return `<div class="card" style="margin-top:14px"><h3>Quién entró</h3><p class="hint">El registro de accesos todavía no está activado en la base (falta correr <b>4_pac_registro_accesos.sql</b>).</p></div>`;
+  const nom = e => { const u = (ACC || []).find(x => x.email === e); return u && u.nombre ? u.nombre : e; };
+  const b = ACT.bitacora || [];
+  let h = `<div class="card" style="margin-top:14px"><h3>Bitácora · últimos ${b.length} movimientos</h3><p class="hint">Cada persona cuenta una entrada cada 10 minutos.</p>`;
+  if (!b.length) return h + '<p class="hint">Todavía no hay movimientos.</p></div>';
+  h += `<div class="scroll" style="max-height:420px;overflow:auto"><table class="tbl"><thead><tr><th style="text-align:left">Fecha</th><th style="text-align:left">Usuario</th><th style="text-align:left">Acción</th><th style="text-align:left">Detalle</th></tr></thead><tbody>`;
+  b.forEach(x => { h += `<tr><td>${esc(fdate(x.cuando))}</td><td>${esc(nom(x.email))}<div class="hint">${esc(x.email)}</div></td><td>${ACCION[x.accion] || esc(x.accion)}</td><td class="muted">${x.accion === 'guardar' ? 'versión ' + esc(fdate(x.detalle)) : esc(x.detalle || '')}</td></tr>`; });
+  return h + '</tbody></table></div></div>';
 }
 
 </script>
