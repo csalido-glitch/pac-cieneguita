@@ -682,9 +682,9 @@ function rImportar() {
   t += '</tbody></table>';
   $('#v-importar').innerHTML = `
    <div class="card" style="margin-bottom:14px"><h3>Importar archivos</h3>
-    <div class="drop" id="drop">Arrastra aquí el <b>Balance Metalúrgico</b> y/o el <b>Costos_Diario_MRT</b> (uno o varios, de cualquier mes)<br>o
+    <div class="drop" id="drop">Arrastra aquí el <b>Balance Metalúrgico</b> y/o el <b>Costos_Diario_MRT</b> (uno o varios, de cualquier mes) o el <b>archivo de costos de Dirección</b> (te pregunta qué meses importar)<br>o
       <label class="btn" style="display:inline-block;margin-top:8px">Seleccionar archivos…<input type="file" id="files" accept=".xlsx,.xlsm,.xls" multiple hidden></label>
-      <div class="hint" style="margin-top:6px">Se detecta solo si es Balance o Costos y de qué mes es. Ese mes se reescribe en su lugar; los demás no se tocan. Los archivos no se modifican.</div></div>
+      <div class="hint" style="margin-top:6px">Se detecta solo si es Balance, Costos o Dirección y de qué mes es. Ese mes se reescribe en su lugar; los demás no se tocan. Los archivos no se modifican.</div></div>
     <div class="log" id="log" style="${LOGTXT ? 'display:block' : ''}">${esc(LOGTXT)}</div></div>
    <div class="card scroll" style="margin-bottom:14px"><h3>Control de meses</h3>${t}
      <div class="hint" style="margin-top:8px"><b>CORTE automático</b> = el menor entre Últ. día ton y Costos al día, para que reactivos y costos vayan parejos. "Ajuste corte" normalmente se deja vacío; solo sirve si quieres forzar otro día (por ejemplo, ver el mes hasta el día 10). Ton programadas se toma solo del Balance (PROYECCIONES C2) y es la base del objetivo (presupuesto ÷ ton programadas).</div></div>
@@ -723,7 +723,8 @@ async function importarArchivos(files) {
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: false, cellFormula: false, cellHTML: false, cellStyles: false });
       let r;
-      if (hoja(wb, 'HUM Y CAB CALC') && hoja(wb, 'RESUMEN')) r = impBalance(wb, f.name);
+      if (esDireccion(wb)) r = await impDireccion(wb, f.name);
+      else if (hoja(wb, 'HUM Y CAB CALC') && hoja(wb, 'RESUMEN')) r = impBalance(wb, f.name);
       else if (hoja(wb, 'BD') && (hoja(wb, 'PB') || hoja(wb, '1'))) r = impCostos(wb, f.name);
       else throw new Error('no parece Balance ni Costos Diario');
       logl('  ✔ ' + r); S.ui.mes = r.k || S.ui.mes;
@@ -761,14 +762,73 @@ function impCostos(wb, nombre) {
   const rng = XLSX.utils.decode_range(bd['!ref'] || 'A1:AG100'); const map = {};
   for (let r = 5; r <= rng.e.r + 1; r++) { const id = cvRC(bd, r, 1); if (isN(id)) map[String(id)] = r; }
   // nombres de filas nuevas
-  S.cosCodes.forEach(x => { const r = map[String(x.c)]; if (r && !x.n) { const n = cvRC(bd, r, 2); if (typeof n === 'string') x.n = n.trim(); } });
+  S.cosCodes.forEach(x => { if (x.dir) return; const r = map[String(x.c)]; if (r && !x.n) { const n = cvRC(bd, r, 2); if (typeof n === 'string') x.n = n.trim(); } });
   let falt = [];
-  S.cosCodes.forEach(x => { const r = map[String(x.c)]; if (!r) { falt.push(x.c); return; }
+  S.cosCodes.forEach(x => { if (x.dir) return; const r = map[String(x.c)]; if (!r) { falt.push(x.c); return; }
     for (let d = 1; d <= D; d++) { const v = cvRC(bd, r, 2 + d); if (!isN(v)) continue; const pv = d > 1 ? cvRC(bd, r, 1 + d) : 0; rows[d][String(x.c)] = v - (isN(pv) ? pv : 0); } });
   let ult = 0; if (pb) for (let r = 4; r <= 40; r++) { const dd = cvRC(pb, r, 1), t = cvRC(pb, r, 2); if (isN(dd) && dd <= 31 && isN(t) && t > 0) ult = dd; }
   if (!ult) { const v = prompt('No pude leer el último día con toneladas en PB de ' + nombre + '. ¿Hasta qué día trae costos?', ''); ult = Math.max(0, Math.min(D, +v || 0)); }
+  const old = S.cos[k]; if (old) S.cosCodes.filter(x => x.dir).forEach(x => { for (let d = 1; d <= D; d++) if (old[d] && old[d][x.c] != null) rows[d][x.c] = old[d][x.c]; });
   S.cos[k] = rows; S.meses[k] = Object.assign(S.meses[k] || {}, { fcos: nombre, icos: new Date().toISOString(), cos: ult });
   return { k, toString: () => `COSTOS ${lab(k)} · costos al día ${ult}${falt.length ? ' · filas no encontradas: ' + falt.join(', ') : ''}` };
+}
+
+/* ---- Costos de Dirección (CM - Proyecto 540): detalle por cuenta y fecha ---- */
+/* Solo Unidad Cieneguita: su árbol de cuentas cuelga de «Mina el Realito» (Nombre_Nivel2). Cualquier otra unidad se descarta. */
+const DIR_UNIDAD = /realito|cieneguita/i;
+function dirCab(ws) {
+  if (!ws || !ws['!ref']) return null; const rg = XLSX.utils.decode_range(ws['!ref']);
+  for (let r = 0; r <= Math.min(rg.e.r, 9); r++) { const m = {};
+    for (let c = 0; c <= Math.min(rg.e.c, 90); c++) { const v = cvRC(ws, r + 1, c + 1); if (typeof v === 'string') m[v.trim()] = c; }
+    if (m.Codigo_Nivel5 != null && m.Fecha_Cont != null && m.Total != null) return { r: r + 1, m }; }
+  return null;
+}
+function esDireccion(wb) { return wb.SheetNames.some(n => dirCab(wb.Sheets[n])); }
+function dirFecha(v) {
+  const s = serialYMD(v); if (s) return s;
+  if (typeof v === 'string') { let m = v.match(/(\d{4})-(\d{2})-(\d{2})/); if (m) return { y: +m[1], m: +m[2], d: +m[3] };
+    m = v.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (m) return { y: +m[3], m: +m[2], d: +m[1] }; }
+  return null;
+}
+function dirPreguntar(ls, nombre, extra) {
+  return new Promise(res => {
+    const ov = document.createElement('div'); ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML = `<div class="card" style="max-width:560px;width:100%;max-height:90vh;overflow:auto"><h3>Costos de Dirección · ¿qué meses importo?</h3>
+      <div class="hint" style="margin-bottom:8px">${esc(nombre)}<br>Solo se importan las cuentas de la Unidad Cieneguita; si el archivo trae otras unidades se descartan y aquí te aviso. Los meses que marques se reescriben solo en las cuentas de Dirección; el Costos Diario y los demás meses no se tocan.</div>
+      <table class="tbl"><thead><tr><th></th><th>Mes</th><th>Líneas</th><th>Hasta el día</th><th>Total $</th><th></th></tr></thead><tbody>${ls.map((x, i) => `<tr><td class="c"><input type="checkbox" id="dm${i}" checked></td><td class="c"><b>${lab(x.k)}</b></td><td class="n">${x.n}</td><td class="c">${x.ult}</td><td class="n">${fmt0.format(x.tot)}</td><td class="muted" style="font-size:11px">${x.ya ? 'ya tiene datos de Dirección: se reemplazan' : ''}</td></tr>`).join('')}</tbody></table>
+      ${extra ? `<div class="hint" style="margin-top:8px;color:#c0392b">${esc(extra)}</div>` : ''}
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn rd" id="dmNo">Cancelar</button><button class="btn gr" id="dmSi">Importar</button></div></div>`;
+    document.body.appendChild(ov);
+    ov.querySelector('#dmNo').onclick = () => { ov.remove(); res([]); };
+    ov.querySelector('#dmSi').onclick = () => { const s = ls.filter((x, i) => ov.querySelector('#dm' + i).checked).map(x => x.k); ov.remove(); res(s); };
+  });
+}
+async function impDireccion(wb, nombre) {
+  const por = {}, nom = {}; let lineas = 0, sinF = 0, sinFm = 0, otras = 0, otrasM = 0; const otrasN = {};
+  wb.SheetNames.forEach(n => { const ws = wb.Sheets[n], h = dirCab(ws); if (!h) return; const rg = XLSX.utils.decode_range(ws['!ref']);
+    const g = (r, k) => { const c = h.m[k]; if (c == null) return undefined; const x = ws[XLSX.utils.encode_cell({ r: r - 1, c })]; return x ? x.v : undefined; };
+    for (let r = h.r + 1; r <= rg.e.r + 1; r++) {
+      const cod = g(r, 'Codigo_Nivel5'), tot = g(r, 'Total'); if (cod == null || cod === '' || !isN(tot)) continue;
+      const u = String(g(r, 'Nombre_Nivel2') || '').trim(); if (h.m.Nombre_Nivel2 != null && !DIR_UNIDAD.test(u)) { otras++; otrasM += tot; otrasN[u || '(sin unidad)'] = 1; continue; }
+      lineas++;
+      const f = dirFecha(g(r, 'Fecha_Cont')); if (!f) { sinF++; sinFm += tot; continue; }
+      const k = ym(f.y, f.m), c = 'D' + String(cod).trim(), P = por[k] = por[k] || { dias: {}, tot: 0, n: 0, ult: 0 };
+      const dd = P.dias[f.d] = P.dias[f.d] || {}; dd[c] = (dd[c] || 0) + tot; P.tot += tot; P.n++; P.ult = Math.max(P.ult, f.d);
+      if (!nom[c]) {
+        nom[c] = [g(r, 'Nombre_Nivel3'), g(r, 'Nombre_Nivel4'), g(r, 'Nombre_Nivel5')].map(x => String(x == null ? '' : x).trim()).filter(Boolean).join(' › '); }
+    } });
+  const ks = Object.keys(por).sort(); if (!ks.length) throw new Error('no encontré renglones de Cieneguita con cuenta, fecha y total' + (otras ? ' (' + otras + ' renglones de otras unidades se descartaron)' : ''));
+  const ls = ks.map(k => ({ k, n: por[k].n, tot: por[k].tot, ult: por[k].ult, ya: !!(S.meses[k] && S.meses[k].fdir) }));
+  const sel = await dirPreguntar(ls, nombre, [sinF ? sinF + ' renglones sin fecha válida ($ ' + fmt0.format(sinFm) + ') no se importan.' : '', otras ? otras + ' renglones de OTRAS unidades (' + Object.keys(otrasN).join(', ') + ', $ ' + fmt0.format(otrasM) + ') NO se importan.' : ''].filter(Boolean).join(' '));
+  if (!sel.length) throw new Error('no se importó nada (cancelado)');
+  sel.forEach(k => { const D = dimK(k), P = por[k], rows = S.cos[k] || [null]; for (let d = 1; d <= D; d++) rows[d] = rows[d] || {};
+    S.cosCodes.filter(x => x.dir).forEach(x => { for (let d = 1; d <= D; d++) delete rows[d][x.c]; });
+    Object.keys(P.dias).forEach(d => { if (+d <= D) Object.assign(rows[+d], P.dias[d]); });
+    Object.keys(nom).forEach(c => { if (!Object.values(P.dias).some(o => o[c] != null)) return; const x = S.cosCodes.find(z => String(z.c) === c); if (x) { x.n = nom[c]; x.dir = true; } else S.cosCodes.push({ c, n: nom[c], dir: true }); });
+    S.cos[k] = rows; const M = S.meses[k] = S.meses[k] || {}; M.fdir = nombre; M.idir = new Date().toISOString(); if (!M.cos) M.cos = P.ult;
+    logl('  · ' + lab(k) + ': ' + P.n + ' líneas · total $ ' + fmt0.format(P.tot) + ' · hasta el día ' + P.ult); });
+  const kk = sel[sel.length - 1];
+  return { k: kk, toString: () => `DIRECCIÓN · ${sel.map(lab).join(', ')} · ${Object.keys(nom).length} cuentas` };
 }
 
 /* ---------------- CATÁLOGO ---------------- */
