@@ -317,6 +317,7 @@ function load() {
   S.ui = Object.assign({ mes: null, vs: 'Mes', base: 'ant', vista: 'Por área', tab: 'pac', catMes: null, bdSrc: 'bal', bdMes: null }, S.ui || {}, ui || {});
   S.meses = S.meses || {}; S.bal = S.bal || {}; S.cos = S.cos || {};
   if (!S.ui.mes || !listaMeses().includes(S.ui.mes)) S.ui.mes = ultimoMes() || ym(S.year, new Date().getMonth() + 1);
+  try { if (Object.values(S.meses).some(m => m && m.fdir)) dirAutoMap(); } catch (e) { }
 }
 let saveT = null;
 function save() {                       // cambio de DATOS: se guarda en este navegador; al archivo solo con el botón Guardar
@@ -466,20 +467,26 @@ let MEMO = {};
 function corte(k) {
   const M = S.meses[k]; if (!M) return 0; const d = dimK(k);
   if (M.man !== null && M.man !== undefined && M.man !== '') return Math.max(0, Math.min(+M.man, d));
-  return (M.ult > 0 && M.cos > 0) ? Math.min(M.ult, M.cos, d) : 0;
+  const cd = (usaDir(k) && M.dirUlt > 0) ? M.dirUlt : M.cos;   // con Dirección el corte es hasta donde llegó el Balance (o Dirección, lo que sea menor)
+  return (M.ult > 0 && cd > 0) ? Math.min(M.ult, cd, d) : 0;
 }
-function estado(k) {
+function fuenteTxt(k) { const M = S.meses[k]; if (!M) return ''; return usaDir(k) ? 'Costos Dirección' : (M.cos > 0 ? 'Costos Diario' : ''); }
+function estado(k) { const e = estadoBase(k), f = fuenteTxt(k); return f ? Object.assign({}, e, { t: e.t + ' · ' + f }) : e; }
+function estadoBase(k) {
   const M = S.meses[k]; if (!M || (!(M.ult > 0) && !(M.cos > 0))) return { t: 'Mes sin importar', c: 'bad', oficial: false };
   if (!(M.ult > 0)) return { t: '⚠ Falta importar BALANCE', c: 'bad' };
   if (!(M.cos > 0)) return { t: '⚠ Falta importar COSTOS', c: 'bad' };
   const ct = corte(k);
   if (ct >= dimK(k)) return { t: '✔ Mes completo', c: 'ok' };
-  if (M.cos < M.ult) return { t: '⏳ PRELIMINAR · costos al día ' + M.cos + ', balance al ' + M.ult, c: 'pre' };
+  const cd = (usaDir(k) && M.dirUlt > 0) ? M.dirUlt : M.cos;
+  if (cd < M.ult) return { t: '⏳ PRELIMINAR · costos al día ' + cd + ', balance al ' + M.ult, c: 'pre' };
   return { t: '✔ OFICIAL al día ' + ct, c: 'ok' };
 }
+function usaDir(k) { return (S.ui.fuente || 'Dir') !== 'Diario' && !!(S.meses[k] && S.meses[k].fdir); }
 function cons(c, k, d) {
   const src = c.ori === 'Balance' ? S.bal : S.cos; const r = src[k] && src[k][d]; if (!r) return 0;
-  let s = 0; for (const ref of c.refs) { const v = r[String(ref).trim().toUpperCase()] ?? r[String(ref).trim()]; if (isN(v)) s += v; } return s;
+  const refs = (c.ori === 'Costos' && c.rd && c.rd.length && usaDir(k)) ? c.rd : c.refs;
+  let s = 0; for (const ref of refs) { const v = r[String(ref).trim().toUpperCase()] ?? r[String(ref).trim()]; if (isN(v)) s += v; } return s;
 }
 function ton(c, k, d) { const r = S.bal[k] && S.bal[k][d]; if (!r) return 0; const v = r[c.prem === 'Acarreadas' ? 'TON_ACA' : 'TON_MOL']; return isN(v) ? v : 0; }
 function sums(c, k) {
@@ -774,6 +781,12 @@ function impCostos(wb, nombre) {
 }
 
 /* ---- Costos de Dirección (CM - Proyecto 540): detalle por cuenta y fecha ---- */
+/* Equivalencias sugeridas: concepto del PAC -> cuentas de Dirección (se pueden cambiar en CATÁLOGO › Ref Dirección) */
+const DIR_MAP = {"Aceros Molienda": ["D54003020004"], "Aceros Trituración": ["D54003030004"], "Materiales y Refacciones": ["D54003020002", "D54003030002", "D54003040002", "D54003050002", "D54003060002", "D54003070002", "D54003080002", "D54003090002", "D54003020005", "D54003030005", "D54003040005", "D54003050005", "D54004030003", "D54004040002", "D54004040003", "D54004060002", "D54004060003"], "Consumos CFE": ["D54004010001"], "Comb. y Lub. Generación": ["D54004010004"], "Fletes de Mineral": ["D54009010001"], "Renta de Maquinaria (Mina)": ["D54001010003"], "Barrenación y Voladura": ["D54001020001", "D54001020002", "D54001020004", "D54001020010", "D54001020005", "D54001020008", "D54001020007", "D54001010006"], "Comb. y Lub. (Mina)": ["D54001010004"], "Renta de Maquinaria (Camino)": ["D54008010006"], "Comb. y Lub. (Camino)": ["D54008010005"], "Mantenimiento": ["D54008010003"], "Fletes Balastro": ["D54008010008"], "Pipas de Riego": ["D54008010004"], "Comedor": ["D54006010002", "D54006010006", "D54006010007", "D54006010008", "D54006010009"], "Hospedaje": ["D54006020001", "D54006020003", "D54006020004", "D54006020005", "D54006020010"], "Seguridad": ["D54005070001"], "Relaciones Comunitarias": ["D54005080002", "D54005080003", "D54005080004", "D54005080007", "D54005080008", "D54005080009"]};
+function dirAutoMap() { let n = 0, sin = [];
+  S.cat.forEach(c => { if (c.ori !== 'Costos' || (c.rd && c.rd.length)) return; const m = DIR_MAP[c.con]; if (!m) { sin.push(c.con); return; }
+    c.rd = m.filter(x => S.cosCodes.some(z => z.c === x)); if (c.rd.length) n++; });
+  return { n, sin }; }
 /* Solo Unidad Cieneguita: su árbol de cuentas cuelga de «Mina el Realito» (Nombre_Nivel2). Cualquier otra unidad se descarta. */
 const DIR_UNIDAD = /realito|cieneguita/i;
 function dirCab(ws) {
@@ -825,8 +838,9 @@ async function impDireccion(wb, nombre) {
     S.cosCodes.filter(x => x.dir).forEach(x => { for (let d = 1; d <= D; d++) delete rows[d][x.c]; });
     Object.keys(P.dias).forEach(d => { if (+d <= D) Object.assign(rows[+d], P.dias[d]); });
     Object.keys(nom).forEach(c => { if (!Object.values(P.dias).some(o => o[c] != null)) return; const x = S.cosCodes.find(z => String(z.c) === c); if (x) { x.n = nom[c]; x.dir = true; } else S.cosCodes.push({ c, n: nom[c], dir: true }); });
-    S.cos[k] = rows; const M = S.meses[k] = S.meses[k] || {}; M.fdir = nombre; M.idir = new Date().toISOString(); if (!M.cos) M.cos = P.ult;
+    S.cos[k] = rows; const M = S.meses[k] = S.meses[k] || {}; M.fdir = nombre; M.idir = new Date().toISOString(); M.dirUlt = P.ult; if (!M.cos) M.cos = P.ult;
     logl('  · ' + lab(k) + ': ' + P.n + ' líneas · total $ ' + fmt0.format(P.tot) + ' · hasta el día ' + P.ult); });
+  const am = dirAutoMap(); logl('  · Conceptos de costos ligados a Dirección: ' + S.cat.filter(c => c.rd && c.rd.length).length + (am.sin.length ? ' · sin equivalencia (siguen con Costos Diario): ' + am.sin.join(', ') : ''));
   const kk = sel[sel.length - 1];
   return { k: kk, toString: () => `DIRECCIÓN · ${sel.map(lab).join(', ')} · ${Object.keys(nom).length} cuentas` };
 }
@@ -837,9 +851,10 @@ function rCatalogo() {
   let a = `<div class="card" style="margin-bottom:14px"><h3>Áreas (el orden manda en el PAC, el Pareto y el ANUAL)</h3><div class="chips">` +
     S.areas.map((x, i) => `<span class="chip" style="background:${ACOL[i % ACOL.length]}">${i > 0 ? `<button title="Subir" onclick="movArea(${i},-1)">◂</button>` : ''}${esc(x)}<button title="Quitar" onclick="delArea(${i})">✕</button></span>`).join('') +
     `<span><input class="inp" id="newArea" placeholder="Nueva área" style="width:140px"> <button class="btn sm" onclick="addArea()">+ Agregar</button></span></div>
+    <div style="margin-top:12px" class="hint"><b>Fuente de costos</b> (meses que traen Dirección): <select class="inp" style="width:230px" onchange="S.ui.fuente=this.value; saveUI(); MEMO={}; render()"><option value="Dir" ${(S.ui.fuente || 'Dir') !== 'Diario' ? 'selected' : ''}>Dirección (la más real)</option><option value="Diario" ${S.ui.fuente === 'Diario' ? 'selected' : ''}>Costos Diario</option></select></div>
     <div style="margin-top:12px" class="hint">Premisa fletes (hoja FLETES del Balance): Total <input class="inp s" value="${esc(S.fletes.tot)}" onchange="S.fletes.tot=this.value.toUpperCase();save()"> − Restar <input class="inp s" value="${esc(S.fletes.exc || '')}" onchange="S.fletes.exc=this.value.toUpperCase();save()"> (Cerro Blanco no paga flete). Si encuentra el título "Total Toneladas" lo usa solo.</div></div>`;
   const opt = (arr, v) => arr.map(o => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('');
-  let t = `<table class="tbl"><thead><tr><th>#</th><th>Activo</th><th>Área</th><th style="text-align:left">Concepto</th><th>Tipo</th><th>Origen</th><th>Ref 1</th><th>Ref 2</th><th>Ref 3</th><th>Ref 4</th><th>Premisa</th><th>Unidad</th><th title="Solo se usa si el mes anterior no tiene datos">Mes ant. inicial</th>
+  let t = `<table class="tbl"><thead><tr><th>#</th><th>Activo</th><th>Área</th><th style="text-align:left">Concepto</th><th>Tipo</th><th>Origen</th><th>Ref 1</th><th>Ref 2</th><th>Ref 3</th><th>Ref 4</th><th style="background:#7a4a00" title="Cuentas de los costos de Dirección que alimentan este concepto (solo concepto de Costos)">Ref Dirección</th><th>Premisa</th><th>Unidad</th><th title="Solo se usa si el mes anterior no tiene datos">Mes ant. inicial</th>
     <th style="background:#2F5597">Precio $/kg<br>${lab(km)}</th><th class="ob">Objetivo<br>${lab(km)}</th><th>${lab(km)} real</th><th></th></tr></thead><tbody>`;
   S.cat.forEach((c, i) => {
     const pv = c.precio && c.precio[km], ov = c.obj && c.obj[km], ph = lastVal(c.precio, km), oh = lastVal(c.obj, km), ar = A(c, km);
@@ -850,6 +865,7 @@ function rCatalogo() {
      <td><select class="inp" style="min-width:96px" onchange="setC(${i},'tipo',this.value)">${opt(['Reactivo', 'Costo'], c.tipo)}</select></td>
      <td><select class="inp" style="min-width:92px" onchange="setC(${i},'ori',this.value)">${opt(['Balance', 'Costos'], c.ori)}</select></td>
      ${[0, 1, 2, 3].map(j => `<td><input class="inp s" value="${esc(c.refs[j] || '')}" onchange="setRef(${i},${j},this.value)" title="${refNombre(c, c.refs[j])}"></td>`).join('')}
+     <td>${c.ori === 'Costos' ? `<input class="inp" style="min-width:150px;background:#FFF3D6" value="${esc((c.rd || []).join(', '))}" placeholder="sin equivalencia" onchange="setRd(${i},this.value)" title="${esc((c.rd || []).map(x => x + ' ' + refNombre({ ori: 'Costos' }, x)).join(' | '))}">` : '<span class="muted">—</span>'}</td>
      <td><select class="inp" style="min-width:108px" onchange="setC(${i},'prem',this.value)">${opt(['Molidas', 'Acarreadas'], c.prem)}</select></td>
      <td class="c muted">${unidad(c)}</td>
      <td><input class="inp n" style="width:80px" value="${c.oini ?? ''}" onchange="setC(${i},'oini',this.value===''?null:+this.value)"></td>
@@ -867,6 +883,7 @@ function rCatalogo() {
     • <b>Activo = No</b> oculta el concepto sin borrar su historia. Si la Ref no existe en la BD, agrégala en la pestaña BASE DE DATOS y reimporta.</div></div>`;
 }
 function refNombre(c, r) { if (!r) return ''; const L = c.ori === 'Balance' ? S.balCodes : S.cosCodes; const x = L.find(z => String(z.c).toUpperCase() === String(r).toUpperCase()); return x ? x.n : '⚠ no está en la BD'; }
+function setRd(i, v) { S.cat[i].rd = String(v).split(/[,;\s]+/).map(x => x.trim().toUpperCase()).filter(Boolean).map(x => /^\d+$/.test(x) ? 'D' + x : x); save(); MEMO = {}; render(); }
 function setC(i, f, v) { S.cat[i][f] = v; save(); render(); }
 function setRef(i, j, v) { const c = S.cat[i]; v = String(v).trim().toUpperCase(); c.refs[j] = v; c.refs = c.refs.filter(x => x); save(); render(); }
 function setMap(i, f, k, v) { const c = S.cat[i]; c[f] = c[f] || {}; v = String(v).trim(); if (v === '') delete c[f][k]; else { let n; try { n = /^[\d.\s+\-*/()]+$/.test(v) ? Function('return (' + v + ')')() : +v; } catch (e) { n = NaN; } if (!isN(n)) { toast('Valor no válido'); return; } c[f][k] = n; } save(); render(); }
