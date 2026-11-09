@@ -483,9 +483,11 @@ function estadoBase(k) {
   return { t: '✔ OFICIAL al día ' + ct, c: 'ok' };
 }
 function usaDir(k) { return (S.ui.fuente || 'Dir') !== 'Diario' && !!(S.meses[k] && S.meses[k].fdir); }
+function kgDir(c, k) { return c.tipo === 'Reactivo' && c.ra && c.ra.length && usaDir(k) && !!(S.meses[k] && S.meses[k].dirKg); }
 function cons(c, k, d) {
-  const src = c.ori === 'Balance' ? S.bal : S.cos; const r = src[k] && src[k][d]; if (!r) return 0;
-  const refs = (c.ori === 'Costos' && c.rd && c.rd.length && usaDir(k)) ? c.rd : c.refs;
+  const kd = kgDir(c, k);   // reactivo con kg de Dirección (columna Cantidad del CM - Proyecto 540)
+  const src = (c.ori === 'Balance' && !kd) ? S.bal : S.cos; const r = src[k] && src[k][d]; if (!r) return 0;
+  const refs = kd ? c.ra : (c.ori === 'Costos' && c.rd && c.rd.length && usaDir(k)) ? c.rd : c.refs;
   let s = 0; for (const ref of refs) { const v = r[String(ref).trim().toUpperCase()] ?? r[String(ref).trim()]; if (isN(v)) s += v; } return s;
 }
 function ton(c, k, d) { const r = S.bal[k] && S.bal[k][d]; if (!r) return 0; const v = r[c.prem === 'Acarreadas' ? 'TON_ACA' : 'TON_MOL']; return isN(v) ? v : 0; }
@@ -634,13 +636,13 @@ function rDiario() {
     const cells2 = days.map(x => { if (x > ct) return `<td class="n off">·</td>`; const v = cons(c, k, x); sc += v; return `<td class="n">${v ? fmt0.format(v) : '·'}</td>`; }).join('');
     const tag = `<span class="ar" style="background:${areaColor(c.area)}">${esc(c.area)}</span>`;
     t1 += tr(`<td class="sticky"><b>${esc(c.con)}</b>${tag}</td><td class="c muted">${unidad(c)}</td>${cells}<td class="n ${cls(s)}"><b>${ok ? money(s) : '–'}</b></td>`);
-    t2 += tr(`<td class="sticky">${esc(c.con)}${tag}</td><td class="c muted">${c.tipo === 'Reactivo' ? 'kg' : '$'}</td>${cells2}<td class="n"><b>${fmt0.format(sc)}</b></td>`);
+    t2 += tr(`<td class="sticky">${esc(c.con)}${tag}</td><td class="c muted">${c.tipo === 'Reactivo' ? (kgDir(c, k) ? 'kg <span title="Costos Dirección · columna Cantidad" style="color:#7a4a00;font-weight:700">Dir</span>' : 'kg') : '$'}</td>${cells2}<td class="n"><b>${fmt0.format(sc)}</b></td>`);
   });
   let acc = 0;
   t1 += tr(`<td class="sticky">TOTAL día (miles $)</td><td></td>${tot.map((v, j) => `<td class="n ${cls(v)}">${j + 1 > ct ? '·' : fmt0.format(v / 1000)}</td>`).join('')}<td class="n"><b>${money(tot.reduce((a, b) => a + b, 0))}</b></td>`, 'sumr');
   t1 += tr(`<td class="sticky">ACUMULADO (miles $)</td><td></td>${tot.map((v, j) => { acc += v; return `<td class="n ${cls(acc)}">${j + 1 > ct ? '·' : fmt0.format(acc / 1000)}</td>`; }).join('')}<td></td>`, 'sumr');
   h += `<div class="card scroll"><h3>1 · Aportación por día (miles de $) · (base × ton del día − consumo del día) × precio</h3><table class="tbl mx">${head}${t1}</table></div>
-        <div class="card scroll" style="margin-top:14px"><h3>2 · Consumo del día · reactivos en kg (Balance) · costos en $ (Costos)</h3><table class="tbl mx">${head}${t2}</table></div>`;
+        <div class="card scroll" style="margin-top:14px"><h3>2 · Consumo del día · reactivos en kg (${S.cat.some(c => kgDir(c, k)) ? 'Costos Dirección · columna Cantidad' : 'Balance'}) · costos en $ (${usaDir(k) ? 'Costos Dirección' : 'Costos'})</h3><table class="tbl mx">${head}${t2}</table></div>`;
   $('#v-diario').innerHTML = h;
 }
 
@@ -783,7 +785,11 @@ function impCostos(wb, nombre) {
 /* ---- Costos de Dirección (CM - Proyecto 540): detalle por cuenta y fecha ---- */
 /* Equivalencias sugeridas: concepto del PAC -> cuentas de Dirección (se pueden cambiar en CATÁLOGO › Ref Dirección) */
 const DIR_MAP = {"Aceros Molienda": ["D54003020004"], "Aceros Trituración": ["D54003030004"], "Materiales y Refacciones": ["D54003020002", "D54003030002", "D54003040002", "D54003050002", "D54003060002", "D54003070002", "D54003080002", "D54003090002", "D54003020005", "D54003030005", "D54003040005", "D54003050005", "D54004030003", "D54004040002", "D54004040003", "D54004060002", "D54004060003"], "Consumos CFE": ["D54004010001"], "Comb. y Lub. Generación": ["D54004010004"], "Fletes de Mineral": ["D54009010001"], "Renta de Maquinaria (Mina)": ["D54001010003"], "Barrenación y Voladura": ["D54001020001", "D54001020002", "D54001020004", "D54001020010", "D54001020005", "D54001020008", "D54001020007", "D54001010006"], "Comb. y Lub. (Mina)": ["D54001010004"], "Renta de Maquinaria (Camino)": ["D54008010006"], "Comb. y Lub. (Camino)": ["D54008010005"], "Mantenimiento": ["D54008010003"], "Fletes Balastro": ["D54008010008"], "Pipas de Riego": ["D54008010004"], "Comedor": ["D54006010002", "D54006010006", "D54006010007", "D54006010008", "D54006010009"], "Hospedaje": ["D54006020001", "D54006020003", "D54006020004", "D54006020005", "D54006020010"], "Seguridad": ["D54005070001"], "Relaciones Comunitarias": ["D54005080002", "D54005080003", "D54005080004", "D54005080007", "D54005080008", "D54005080009"]};
+/* Reactivos: artículos del almacén (No_Art) cuyos kg (columna Cantidad) alimentan cada reactivo cuando la fuente es Dirección */
+const DIR_ART = {"NaCN": ["K06010109"], "Cal Viva": ["K06010114"], "Celulosa": ["K06010110"], "Polvo de Zn": ["K06010117", "K06010123", "K06010122"], "Floculante": ["K06010118", "K06010102"], "Diatomita": ["K06010111"]};
+const DIR_ART_SET = new Set(Object.values(DIR_ART).flat());
 function dirAutoMap() { let n = 0, sin = [];
+  S.cat.forEach(c => { if (c.tipo === 'Reactivo' && !(c.ra && c.ra.length) && DIR_ART[c.con]) c.ra = DIR_ART[c.con].slice(); });
   S.cat.forEach(c => { if (c.ori !== 'Costos' || (c.rd && c.rd.length)) return; const m = DIR_MAP[c.con]; if (!m) { sin.push(c.con); return; }
     c.rd = m.filter(x => S.cosCodes.some(z => z.c === x)); if (c.rd.length) n++; });
   return { n, sin }; }
@@ -825,8 +831,12 @@ async function impDireccion(wb, nombre) {
       const u = String(g(r, 'Nombre_Nivel2') || '').trim(); if (h.m.Nombre_Nivel2 != null && !DIR_UNIDAD.test(u)) { otras++; otrasM += tot; otrasN[u || '(sin unidad)'] = 1; continue; }
       lineas++;
       const f = dirFecha(g(r, 'Fecha_Cont')); if (!f) { sinF++; sinFm += tot; continue; }
-      const k = ym(f.y, f.m), c = 'D' + String(cod).trim(), P = por[k] = por[k] || { dias: {}, tot: 0, n: 0, ult: 0 };
+      const k = ym(f.y, f.m), c = 'D' + String(cod).trim(), P = por[k] = por[k] || { dias: {}, tot: 0, n: 0, ult: 0, kg: 0 };
       const dd = P.dias[f.d] = P.dias[f.d] || {}; dd[c] = (dd[c] || 0) + tot; P.tot += tot; P.n++; P.ult = Math.max(P.ult, f.d);
+      // Reactivos: kg por artículo (columna Cantidad), código «K» + No_Art
+      const art = String(g(r, 'No_Art') == null ? '' : g(r, 'No_Art')).trim(), can = g(r, 'Cantidad');
+      if (art && isN(can) && (DIR_ART_SET.has('K' + art) || /reactivo/i.test(String(g(r, 'Nombre_Nivel5') || '')))) {
+        const ka = 'K' + art; dd[ka] = (dd[ka] || 0) + can; P.kg++; if (!nom[ka]) nom[ka] = String(g(r, 'Descripcion') || art).trim() + ' (kg)'; }
       if (!nom[c]) {
         nom[c] = [g(r, 'Nombre_Nivel3'), g(r, 'Nombre_Nivel4'), g(r, 'Nombre_Nivel5')].map(x => String(x == null ? '' : x).trim()).filter(Boolean).join(' › '); }
     } });
@@ -838,8 +848,8 @@ async function impDireccion(wb, nombre) {
     S.cosCodes.filter(x => x.dir).forEach(x => { for (let d = 1; d <= D; d++) delete rows[d][x.c]; });
     Object.keys(P.dias).forEach(d => { if (+d <= D) Object.assign(rows[+d], P.dias[d]); });
     Object.keys(nom).forEach(c => { if (!Object.values(P.dias).some(o => o[c] != null)) return; const x = S.cosCodes.find(z => String(z.c) === c); if (x) { x.n = nom[c]; x.dir = true; } else S.cosCodes.push({ c, n: nom[c], dir: true }); });
-    S.cos[k] = rows; const M = S.meses[k] = S.meses[k] || {}; M.fdir = nombre; M.idir = new Date().toISOString(); M.dirUlt = P.ult; if (!M.cos) M.cos = P.ult;
-    logl('  · ' + lab(k) + ': ' + P.n + ' líneas · total $ ' + fmt0.format(P.tot) + ' · hasta el día ' + P.ult); });
+    S.cos[k] = rows; const M = S.meses[k] = S.meses[k] || {}; M.fdir = nombre; M.idir = new Date().toISOString(); M.dirUlt = P.ult; if (!M.cos) M.cos = P.ult; M.dirKg = P.kg > 0;
+    logl('  · ' + lab(k) + ': ' + P.n + ' líneas · total $ ' + fmt0.format(P.tot) + ' · hasta el día ' + P.ult + (P.kg ? ' · kg de reactivos: ' + P.kg + ' líneas' : ' · sin kg de reactivos')); });
   const am = dirAutoMap(); logl('  · Conceptos de costos ligados a Dirección: ' + S.cat.filter(c => c.rd && c.rd.length).length + (am.sin.length ? ' · sin equivalencia (siguen con Costos Diario): ' + am.sin.join(', ') : ''));
   const kk = sel[sel.length - 1];
   return { k: kk, toString: () => `DIRECCIÓN · ${sel.map(lab).join(', ')} · ${Object.keys(nom).length} cuentas` };
@@ -854,7 +864,7 @@ function rCatalogo() {
     <div style="margin-top:12px" class="hint"><b>Fuente de costos</b> (meses que traen Dirección): <select class="inp" style="width:230px" onchange="S.ui.fuente=this.value; saveUI(); MEMO={}; render()"><option value="Dir" ${(S.ui.fuente || 'Dir') !== 'Diario' ? 'selected' : ''}>Dirección (la más real)</option><option value="Diario" ${S.ui.fuente === 'Diario' ? 'selected' : ''}>Costos Diario</option></select></div>
     <div style="margin-top:12px" class="hint">Premisa fletes (hoja FLETES del Balance): Total <input class="inp s" value="${esc(S.fletes.tot)}" onchange="S.fletes.tot=this.value.toUpperCase();save()"> − Restar <input class="inp s" value="${esc(S.fletes.exc || '')}" onchange="S.fletes.exc=this.value.toUpperCase();save()"> (Cerro Blanco no paga flete). Si encuentra el título "Total Toneladas" lo usa solo.</div></div>`;
   const opt = (arr, v) => arr.map(o => `<option ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('');
-  let t = `<table class="tbl"><thead><tr><th>#</th><th>Activo</th><th>Área</th><th style="text-align:left">Concepto</th><th>Tipo</th><th>Origen</th><th>Ref 1</th><th>Ref 2</th><th>Ref 3</th><th>Ref 4</th><th style="background:#7a4a00" title="Cuentas de los costos de Dirección que alimentan este concepto (solo concepto de Costos)">Ref Dirección</th><th>Premisa</th><th>Unidad</th><th title="Solo se usa si el mes anterior no tiene datos">Mes ant. inicial</th>
+  let t = `<table class="tbl"><thead><tr><th>#</th><th>Activo</th><th>Área</th><th style="text-align:left">Concepto</th><th>Tipo</th><th>Origen</th><th>Ref 1</th><th>Ref 2</th><th>Ref 3</th><th>Ref 4</th><th style="background:#7a4a00" title="Costos: cuentas de Dirección ($). Reactivos: artículos de Dirección (kg de la columna Cantidad).">Ref Dirección</th><th>Premisa</th><th>Unidad</th><th title="Solo se usa si el mes anterior no tiene datos">Mes ant. inicial</th>
     <th style="background:#2F5597">Precio $/kg<br>${lab(km)}</th><th class="ob">Objetivo<br>${lab(km)}</th><th>${lab(km)} real</th><th></th></tr></thead><tbody>`;
   S.cat.forEach((c, i) => {
     const pv = c.precio && c.precio[km], ov = c.obj && c.obj[km], ph = lastVal(c.precio, km), oh = lastVal(c.obj, km), ar = A(c, km);
@@ -865,7 +875,7 @@ function rCatalogo() {
      <td><select class="inp" style="min-width:96px" onchange="setC(${i},'tipo',this.value)">${opt(['Reactivo', 'Costo'], c.tipo)}</select></td>
      <td><select class="inp" style="min-width:92px" onchange="setC(${i},'ori',this.value)">${opt(['Balance', 'Costos'], c.ori)}</select></td>
      ${[0, 1, 2, 3].map(j => `<td><input class="inp s" value="${esc(c.refs[j] || '')}" onchange="setRef(${i},${j},this.value)" title="${refNombre(c, c.refs[j])}"></td>`).join('')}
-     <td>${c.ori === 'Costos' ? `<input class="inp" style="min-width:150px;background:#FFF3D6" value="${esc((c.rd || []).join(', '))}" placeholder="sin equivalencia" onchange="setRd(${i},this.value)" title="${esc((c.rd || []).map(x => x + ' ' + refNombre({ ori: 'Costos' }, x)).join(' | '))}">` : '<span class="muted">—</span>'}</td>
+     <td>${c.ori === 'Costos' ? `<input class="inp" style="min-width:150px;background:#FFF3D6" value="${esc((c.rd || []).join(', '))}" placeholder="sin equivalencia" onchange="setRd(${i},this.value)" title="${esc((c.rd || []).map(x => x + ' ' + refNombre({ ori: 'Costos' }, x)).join(' | '))}">` : c.tipo === 'Reactivo' ? `<input class="inp" style="min-width:150px;background:#E8F4EC" value="${esc((c.ra || []).join(', '))}" placeholder="artículo (kg)" onchange="setRa(${i},this.value)" title="${esc('Kg de la columna Cantidad · ' + (c.ra || []).map(x => x + ' ' + refNombre({ ori: 'Costos' }, x)).join(' | '))}">` : '<span class="muted">—</span>'}</td>
      <td><select class="inp" style="min-width:108px" onchange="setC(${i},'prem',this.value)">${opt(['Molidas', 'Acarreadas'], c.prem)}</select></td>
      <td class="c muted">${unidad(c)}</td>
      <td><input class="inp n" style="width:80px" value="${c.oini ?? ''}" onchange="setC(${i},'oini',this.value===''?null:+this.value)"></td>
@@ -878,11 +888,13 @@ function rCatalogo() {
   $('#v-catalogo').innerHTML = a + `<div class="card scroll"><div class="bar-tools"><h3 style="margin:0">Conceptos</h3><button class="btn sm" onclick="addC()">+ Agregar concepto</button>
     <span class="hint" style="margin-left:auto">Precio y Objetivo del mes:</span><div class="sel"><select class="inp" onchange="S.ui.catMes=this.value; saveUI();rCatalogo()">${ms.map(k => `<option value="${k}" ${k === km ? 'selected' : ''}>${lab(k)}</option>`).join('')}</select></div></div>${t}
     <div class="hint" style="margin-top:8px;line-height:1.6">• <b>Origen Balance</b>: Ref = columna de HUM Y CAB CALC (ej. AR; Floculante = BA + BB). <b>Origen Costos</b>: Ref = número de fila del Costos Diario (ej. 7 Fletes). Se suman las Ref.<br>
+    • <b>Ref Dirección</b>: en los costos, las cuentas de Dirección ($). En los <b>reactivos</b>, los artículos de Dirección (K + No_Art, ej. K06010109 = Cianuro): con la fuente «Dirección», los kg salen de la columna <b>Cantidad</b> de cada mes; sin Dirección, del Balance.<br>
     • <b>Precio y Objetivo</b>: captura el valor en el mes en que cambia; el gris es el valor vigente que viene de un mes anterior. Puedes escribir el objetivo ya dividido (ej. 786900/34000 → 23.14).<br>
     • <b>Mes anterior</b>: automático (ponderado del mes previo importado). "Mes ant. inicial" solo se usa si el mes previo no tiene datos.<br>
     • <b>Activo = No</b> oculta el concepto sin borrar su historia. Si la Ref no existe en la BD, agrégala en la pestaña BASE DE DATOS y reimporta.</div></div>`;
 }
 function refNombre(c, r) { if (!r) return ''; const L = c.ori === 'Balance' ? S.balCodes : S.cosCodes; const x = L.find(z => String(z.c).toUpperCase() === String(r).toUpperCase()); return x ? x.n : '⚠ no está en la BD'; }
+function setRa(i, v) { S.cat[i].ra = String(v).split(/[,;\s]+/).map(x => x.trim().toUpperCase()).filter(Boolean).map(x => /^\d+$/.test(x) ? 'K' + x : x); save(); MEMO = {}; render(); }
 function setRd(i, v) { S.cat[i].rd = String(v).split(/[,;\s]+/).map(x => x.trim().toUpperCase()).filter(Boolean).map(x => /^\d+$/.test(x) ? 'D' + x : x); save(); MEMO = {}; render(); }
 function setC(i, f, v) { S.cat[i][f] = v; save(); render(); }
 function setRef(i, j, v) { const c = S.cat[i]; v = String(v).trim().toUpperCase(); c.refs[j] = v; c.refs = c.refs.filter(x => x); save(); render(); }
